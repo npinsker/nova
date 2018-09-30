@@ -6,6 +6,7 @@ package nova.utils;
  * Properties can be accessed with the 'x' and 'y' values,
  * or the 'first' and 'second' values.
  */
+
 @:generic
 abstract Pair<K:Float>(Array<K>) {
 	public static var LEFT:Pair<Int> = [-1, 0];
@@ -17,11 +18,13 @@ abstract Pair<K:Float>(Array<K>) {
 		this = [x, y];
 	}
 	
-	public var x(get, never):K;
+	public var x(get, set):K;
 	function get_x() { return this[0]; }
+	function set_x(x:K) { this[0] = x; return x; }
 	
-	public var y(get, never):K;
+	public var y(get, set):K;
 	function get_y() { return this[1]; }
+	function set_y(y:K) { this[1] = y; return y; }
 	
 	public var first(get, never):K;
 	function get_first() { return this[0]; }
@@ -62,14 +65,24 @@ abstract Pair<K:Float>(Array<K>) {
 		return new Pair<K>(this[0] - rhs[0], this[1] - rhs[1]);
 	}
 	
-	@:op(A * B)
+	@:op(A * B) @:commutative
 	public function multiply(rhs:K):Pair<K> {
 		return new Pair<K>(this[0] * rhs, this[1] * rhs);
 	}
 	
+	@:op(-A)
+	public function negate():Pair<K> {
+		return new Pair<K>( -this[0], -this[1]);
+	}
+	
 	@:op(A == B)
 	public function equals(rhs:Array<K>):Bool {
+		if (rhs == null) return (this == null);
 		return this[0] == rhs[0] && this[1] == rhs[1];
+	}
+	
+	public function copy():Pair<K> {
+		return new Pair<K>(this[0], this[1]);
 	}
 	
 	public function toString():String {

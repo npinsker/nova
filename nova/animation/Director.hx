@@ -82,6 +82,7 @@ class Director {
 	private var nextID:Int = 0;
 	private var _liveActors:Array<Actor>;
 	private var _animationInfoMap:Map<FlxSprite, Array<Actor>>;
+	public var paused:Bool = false;
 
 	private function new() {
 		_animationInfoMap = new Map<FlxSprite, Array<Actor>>();
@@ -110,8 +111,8 @@ class Director {
 	private static function _moveToAction(point:Pair<Int>, frames:Int):Action {
 		return new Action(function(sprite:FlxSprite, object:Dynamic) { object.x = sprite.x; object.y = sprite.y; },
 		                  function(sprite:FlxSprite, frame:Int, object:Dynamic):Void {
-							  sprite.x = object.x + (frame / frames) * (point.x - object.x);
-							  sprite.y = object.y + (frame / frames) * (point.y - object.y);
+							  sprite.x = sprite.x + (1.0 / frames) * (point.x - object.x);
+							  sprite.y = sprite.y + (1.0 / frames) * (point.y - object.y);
 						  },
 						  frames);
 	}
@@ -214,6 +215,7 @@ class Director {
 		var i = instance._liveActors.length - 1;
 		while (i >= 0) {
 			var liveActor = instance._liveActors[i];
+			
 			liveActor.currentFrame += 1;
 			if (liveActor.action != null) {
 				liveActor.action.update(liveActor.sprite, liveActor.currentFrame);
@@ -226,7 +228,12 @@ class Director {
 						if (nextActor.action != null) {
 							nextActor.action.init(nextActor.sprite);
 						}
-						instance._liveActors.push(nextActor);
+						if (nextActor.action == null) {
+							instance._liveActors.insert(0, nextActor);
+							++i;
+						} else {
+							instance._liveActors.push(nextActor);
+						}
 					}
 				}
 				if (liveActor.callback != null) {
@@ -239,6 +246,30 @@ class Director {
 	}
 	
 	public static function update():Void {
-		instance._update();
+		if (!instance.paused) {
+			instance._update();
+		}
+	}
+	
+	public static function pause():Void {
+		instance.paused = true;
+	}
+	
+	public static function resume():Void {
+		instance.paused = false;
+	}
+	
+	public static function clear():Void {
+		instance._liveActors.splice(0, instance._liveActors.length);
+	}
+	
+	public static function clearTag(tag:String):Void {
+		var i = instance._liveActors.length - 1;
+		while (i >= 0) {
+			if (instance._liveActors[i].tag == tag) {
+				instance._liveActors.splice(i, 1);
+			}
+			--i;
+		}
 	}
 }

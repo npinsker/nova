@@ -4,8 +4,8 @@
 	"license": "MIT",
 	"tags": ["game", "openfl", "flash", "neko", "flixel"],
 	"description": "Nova is a set of game development tools on top of Flixel to supercharge common tasks.",
-	"version": "0.0.1",
-	"releasenote": "First release. Rough versions of Director & DialogBox.",
+	"version": "0.0.6",
+	"releasenote": "Add FlxLocalSprite and fix a few other bugs.",
 	"contributors": ["npinsker"],
   "dependencies": {
     "flixel": ""

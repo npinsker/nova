@@ -13,16 +13,11 @@ import flixel.util.FlxColor;
 import flixel.util.typeLimit.OneOfTwo;
 import nova.utils.BitmapDataUtils;
 import nova.utils.Pair;
+import nova.input.InputController;
 import openfl.Assets;
 import openfl.display.BitmapData;
 
-enum DialogBoxType {
-	TEXT_ONLY;  // Successive dialog boxes of text only.
-	            // Format data as an Array<String>.
-	TEXT_PLUS_METADATA;  // Dialog boxes contain text, as well as optional 'speaker'
-	                     // and 'image' attributes. Format data as an Array<Dynamic>.
-	RICH;  // Rich text box. Currently unsupported.
-}
+using nova.utils.StructureUtils;
 
 enum DialogBoxPosition {
 	TOP;
@@ -57,7 +52,7 @@ class DialogBox extends FlxSpriteGroup {
 	public var advancing:Bool = false;
 	public var advanceSound:String = null;
 	public var advanceIndicatorInfo:Dynamic;
-	public var advanceIndicatorSprite:FlxSprite;
+	public var advanceIndicatorSprite:FlxSprite = null;
 	public var advanceIndicatorTween:FlxTween;
 	
 	public var backgroundPadding:Pair<Int> = [0, 0];
@@ -72,16 +67,23 @@ class DialogBox extends FlxSpriteGroup {
 	public var nextText:FlxText;
 	public var copiedText:FlxSprite;
 	public var messages:Array<Dynamic>;
-	public var index:Int = 0;
+	public var index:Int = -1;
 	public var bottomImageStore:FlxSprite;
 	public var globalScale:Int = 1;
 	
 	public var currentSpeaker:String = "";
 	public var dialogSpeakerSprite:FlxSprite = null;
 	public var speakerText:FlxText = null;
+	public var speakerBackground:FlxSprite = null;
+	public var speakerPadding:Int = 6;
+	public var speakerImage:FlxSprite = null;
+	public var speakerOffset:Pair<Int> = [0, 0];
+	public var textOffset:Pair<Int> = [0, 0];
 	
 	public var callback:Void -> Void = null;
-	public var abortCallback:Void -> Void = null;
+	public var boxCallback:Void -> Void = null;
+	public var advanceCallback:String -> Void = null;
+	public var boxCallbackStr:String = null;
 	
 	public var options:Dynamic;
 	public var optionsTween:FlxTween;
@@ -106,6 +108,7 @@ class DialogBox extends FlxSpriteGroup {
 		super();
 		
 		this.messages = messages;
+		this.options = options;
 		for (i in 0...this.messages.length) {
 			if (Std.is(this.messages[i], String)) {
 				this.messages[i] = StringTools.trim(this.messages[i]);
@@ -117,7 +120,8 @@ class DialogBox extends FlxSpriteGroup {
 		}
 		
 		for (supportedField in ['abort', 'align', 'skip', 'advanceStyle', 'advanceLength',
-		                        'advanceSound', 'callback', 'abortCallback', 'fontSize']) {
+		                        'advanceSound', 'callback', 'abortCallback', 'advanceCallback', 'fontSize',
+								'fontAssetPath', 'fontColor']) {
 			if (Reflect.hasField(options, supportedField)) {
 				Reflect.setField(this, supportedField, Reflect.field(options, supportedField));
 			}
@@ -138,17 +142,24 @@ class DialogBox extends FlxSpriteGroup {
 		if (Reflect.hasField(options, 'speakerBackground')) {
 			dialogSpeakerSprite = new FlxSprite();
 			var bitmapData:BitmapData = BitmapDataUtils.loadFromObject(options.speakerBackground);
+			this.speakerBackground = options.speakerBackground;
 			dialogSpeakerSprite.loadGraphic(bitmapData);
 			this.add(dialogSpeakerSprite);
-			var offset:Pair<Int> = [0, 0];
 			if (Reflect.hasField(options.speakerBackground, 'offset')) {
-				offset = [Std.int(options.speakerBackground.offset.x * globalScale), Std.int(options.speakerBackground.offset.y * globalScale)];
+				speakerOffset = [Std.int(options.speakerBackground.offset.x * globalScale), Std.int(options.speakerBackground.offset.y * globalScale)];
 			}
-			speakerBoxTop = dialogBoxTop - dialogSpeakerSprite.height + offset.y;
+			if (Reflect.hasField(options.speakerBackground, 'padding')) {
+				speakerPadding = options.speakerBackground.padding;
+			}
+			if (Reflect.hasField(options.speakerBackground, 'textOffset')) {
+				textOffset = [Std.int(options.speakerBackground.textOffset.x * globalScale), Std.int(options.speakerBackground.textOffset.y * globalScale)];
+			}
+			speakerBoxTop = dialogBoxTop - dialogSpeakerSprite.height + speakerOffset.y;
 			dialogSpeakerSprite.y = speakerBoxTop;
-			dialogSpeakerSprite.x = (10 * globalScale) + offset.x;
+			dialogSpeakerSprite.x = (5 * globalScale) + speakerOffset.x;
 			dialogSpeakerSprite.visible = false;
 		}
+		speakerPadding *= globalScale;
 		
 		if (Reflect.hasField(options, 'advanceIndicator')) {
 			advanceIndicatorSprite = new FlxSprite();
@@ -179,109 +190,146 @@ class DialogBox extends FlxSpriteGroup {
 				advanceIndicator.animation.x += advanceIndicatorSprite.x;
 				advanceIndicator.animation.y += advanceIndicatorSprite.y;
 				advanceIndicatorTween = FlxTween.tween(advanceIndicatorSprite, advanceIndicator.animation, 0.3,
-													   {ease: FlxEase.expoInOut, type: FlxTween.PINGPONG});
+													   {ease: FlxEase.expoInOut, type: 4});
 			}
 			
 			this.add(advanceIndicatorSprite);
 		}
 		
-		text = new FlxText(textPadding.x,
-		                   dialogBoxTop + textPadding.y,
-		                   bgSprite.width - (2 * textPadding.x),
-						   messages[0]);
-		text.setFormat(this.fontAssetPath, Std.int(this.fontSize), this.fontColor);
-		this.add(text);
+		text = new FlxText();
+		var holdStyle = this.advanceStyle;
+		this.advanceStyle = DialogAdvanceStyle.NONE;
+		
+		advanceText();
+		
+		this.advanceStyle = holdStyle;
+	}
+	
+	public function advanceText() {
+		index += 1;
+		var nextTextStr:String;
+		var nextSpeaker:String = "";
+		
+		if (boxCallbackStr != null) {
+			if (advanceCallback == null) {
+				trace("Error: can't include a `callbackStr` on a dialog box if no `advanceCallback` is provided!");
+			} else {
+				advanceCallback(boxCallbackStr);
+			}
+		}
+
+		boxCallbackStr = null;
+
+		if (speakerText != null) {
+			speakerText.destroy();
+		}
+
+		if (Std.is(messages[index], String)) {
+			nextTextStr = messages[index];
+		} else {
+			nextTextStr = messages[index].text;
+			nextSpeaker = messages[index].speaker;
+			if (Reflect.hasField(messages[index], 'callbackStr')) {
+				boxCallbackStr = messages[index].callbackStr;
+			}
+		}
+		if (nextSpeaker != currentSpeaker && dialogSpeakerSprite != null) {
+			//remove
+		}
+		
+		var textX:Int = textPadding.x;
+		
+		if (nextSpeaker != "") {
+			dialogSpeakerSprite.visible = true;
+			speakerText = new FlxText(5 * globalScale + speakerOffset.x + textOffset.x + speakerPadding,
+			                          speakerBoxTop + this.dialogSpeakerSprite.height - this.fontSize - 4 * globalScale + textOffset.y,
+			                          0, nextSpeaker);
+			speakerText.setFormat(this.fontAssetPath, Std.int(this.fontSize), this.fontColor);
+			var speakerBitmapData:BitmapData = BitmapDataUtils.loadFromObject(speakerBackground);
+			dialogSpeakerSprite.loadGraphic(BitmapDataUtils.horizontalStretchCenter(speakerBitmapData,
+			                                                                        speakerPadding,
+			                                                                        Std.int(speakerText.width) + 2 * speakerPadding));
+			add(speakerText);
+			
+			if (speakerImage != null) {
+				remove(speakerImage);
+				speakerImage = null;
+			
+				
+			}
+			var imageSrc = this.options.prop('defaultBindings.speakerImages.' + nextSpeaker);
+			if (Reflect.hasField(messages[index], 'image')) {
+				imageSrc = messages[index].image;
+			}
+			if (imageSrc != null) {
+				speakerImage = new FlxSprite(Assets.getBitmapData(imageSrc));
+				add(speakerImage);
+				speakerImage.y = dialogBoxTop + (bgSprite.height - speakerImage.height) / 2;
+				speakerImage.x = textPadding.x;
+				textX += textPadding.x + Std.int(speakerImage.width);
+			}
+		} else {
+			dialogSpeakerSprite.visible = false;
+		}
+		
+		if (index > 0 && advanceSound != null) {
+			FlxG.sound.load(advanceSound).play();
+		}
+		
+		if (this.advanceStyle == DialogAdvanceStyle.NONE) {
+			text.destroy();
+			text = new FlxText(textX,
+							   dialogBoxTop + textPadding.y,
+							   bgSprite.width - textX - textPadding.x,
+							   nextTextStr);
+			text.setFormat(this.fontAssetPath, Std.int(this.fontSize), this.fontColor);
+			this.add(text);
+		} else if (this.advanceStyle == DialogAdvanceStyle.SCROLL) {
+			advancing = true;
+			if (advanceIndicatorSprite != null) advanceIndicatorSprite.visible = false;
+			nextText = new FlxText(textX,
+								   dialogBoxTop + textPadding.y + bgSprite.height,
+								   bgSprite.width - (2 * textPadding.x),
+								   nextTextStr);
+			nextText.setFormat(this.fontAssetPath, Std.int(this.fontSize), this.fontColor);
+			nextText.draw();
+			bottomImageStore = new FlxSprite();
+			bottomImageStore.pixels = nextText.pixels.clone();
+			add(nextText);
+	
+			Director.afterAll(null,
+				[text.moveBy([0, -Std.int(bgSprite.height)], advanceLength, DIRECTOR_DIALOG_TRANSITION_STR),
+				 nextText.moveBy([0, -Std.int(bgSprite.height)], advanceLength, DIRECTOR_DIALOG_TRANSITION_STR)]).call(function(sprite:FlxSprite) {
+					this.remove(text);
+					text.destroy();
+					text = nextText;
+					advancing = false;
+					if (advanceIndicatorSprite != null) advanceIndicatorSprite.visible = true;
+				});
+		} else if (this.advanceStyle == DialogAdvanceStyle.TYPEWRITER) {
+			advancing = true;
+			if (advanceIndicatorSprite != null) advanceIndicatorSprite.visible = false;
+			DialogBox.typeOut(this.text, nextTextStr, advanceLength).call(function(sprite:FlxSprite) {
+				advancing = false;
+				if (advanceIndicatorSprite != null) advanceIndicatorSprite.visible = true;
+			});
+		}
+		if (index == messages.length - 1) {
+			advanceIndicatorTween.cancel();
+			if (advanceIndicatorSprite != null) {
+				advanceIndicatorSprite.animation.play("finish");
+				advanceIndicatorSprite.x = FlxG.width - advanceIndicatorSprite.width - textPadding.x;
+				advanceIndicatorSprite.y = FlxG.height - advanceIndicatorSprite.height - textPadding.y;
+			}
+		}
 	}
 	
 	public function handleInput() {
-		var advance:Bool = false;
-		var abort:Bool = false;
-		#if (desktop || web)
-		advance = advance || FlxG.keys.anyJustPressed([Z, ENTER, SPACE]);
-		abort = advance || FlxG.keys.anyJustPressed([LEFT, RIGHT, UP, DOWN, A, S, D, W]);
-		#end
-		#if mobile
-		advance = advance || (FlxG.swipes.length > 0);
-		#end
+		var advance:Bool = InputController.justPressed(Button.CONFIRM);
 		if (advance) {
 			if (!advancing) {
 				if (index < messages.length - 1) {
-					index += 1;
-					var nextTextStr:String;
-					var nextSpeaker:String = "";
-					
-					if (speakerText != null) {
-						speakerText.destroy();
-					}
-
-					if (Std.is(messages[index], String)) {
-						nextTextStr = messages[index];
-					} else {
-						nextTextStr = messages[index].text;
-						nextSpeaker = messages[index].speaker;
-					}
-					if (nextSpeaker != currentSpeaker && dialogSpeakerSprite != null) {
-						//remove
-					}
-					
-					if (nextSpeaker != "") {
-						dialogSpeakerSprite.visible = true;
-						speakerText = new FlxText(10 * globalScale + offset.x, speakerBoxTop + this.dialogSpeakerSprite.height - this.fontSize - 4 * globalScale,
-						                          dialogSpeakerSprite.width, nextSpeaker);
-						speakerText.alignment = FlxTextAlign.CENTER;
-						speakerText.setFormat(this.fontAssetPath, Std.int(this.fontSize), this.fontColor);
-						add(speakerText);
-					} else {
-						dialogSpeakerSprite.visible = false;
-					}
-					
-					if (advanceSound != null) {
-						FlxG.sound.load(advanceSound).play();
-					}
-					
-					if (this.advanceStyle == DialogAdvanceStyle.NONE) {
-						text.destroy();
-						text = new FlxText(textPadding.x,
-										   dialogBoxTop + textPadding.y,
-										   bgSprite.width - (2 * textPadding.x),
-										   nextTextStr);
-						text.setFormat(this.fontAssetPath, Std.int(this.fontSize), this.fontColor);
-						this.add(text);
-					} else if (this.advanceStyle == DialogAdvanceStyle.SCROLL) {
-						advancing = true;
-						advanceIndicatorSprite.visible = false;
-						nextText = new FlxText(textPadding.x,
-											   dialogBoxTop + textPadding.y + bgSprite.height,
-											   bgSprite.width - (2 * textPadding.x),
-											   nextTextStr);
-						nextText.setFormat(this.fontAssetPath, Std.int(this.fontSize), this.fontColor);
-						nextText.draw();
-						bottomImageStore = new FlxSprite();
-						bottomImageStore.pixels = nextText.pixels.clone();
-						add(nextText);
-						Director.afterAll(null,
-							[text.moveBy([0, -Std.int(bgSprite.height)], advanceLength, DIRECTOR_DIALOG_TRANSITION_STR),
-							 nextText.moveBy([0, -Std.int(bgSprite.height)], advanceLength, DIRECTOR_DIALOG_TRANSITION_STR)]).call(function(sprite:FlxSprite) {
-								this.remove(text);
-								text.destroy();
-								text = nextText;
-								advancing = false;
-								advanceIndicatorSprite.visible = true;
-							});
-					} else if (this.advanceStyle == DialogAdvanceStyle.TYPEWRITER) {
-						advancing = true;
-						advanceIndicatorSprite.visible = false;
-						DialogBox.typeOut(this.text, nextTextStr, advanceLength).call(function(sprite:FlxSprite) {
-							advancing = false;
-							advanceIndicatorSprite.visible = true;
-						});
-					}
-					if (index == messages.length - 1) {
-						advanceIndicatorTween.cancel();
-						advanceIndicatorSprite.animation.play("finish");
-						advanceIndicatorSprite.x = FlxG.width - advanceIndicatorSprite.width - textPadding.x;
-						advanceIndicatorSprite.y = FlxG.height - advanceIndicatorSprite.height - textPadding.y;
-					}
+					advanceText();
 				} else {
 					if (this.callback != null) {
 						this.callback();

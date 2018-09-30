@@ -61,7 +61,7 @@ class BitmapDataUtils {
 	
 	public static function getSpriteFromSheetFn(sourceBitmapData:BitmapData, tileDimensions:Pair<Int>):Pair<Int> -> ?(BitmapData -> BitmapData) -> BitmapData {
 		return function(tileCoords:Pair<Int>, ?transformFn:BitmapData -> BitmapData = null):BitmapData {
-			var tile:BitmapData = new BitmapData(tileDimensions.x, tileDimensions.y);
+			var tile:BitmapData = new BitmapData(tileDimensions.x, tileDimensions.y, true, 0);
 			tile.copyPixels(sourceBitmapData,
 				            new Rectangle(tileCoords.x * tileDimensions.x, tileCoords.y * tileDimensions.y, tileDimensions.x, tileDimensions.y),
 							new Point(0, 0));
@@ -69,14 +69,22 @@ class BitmapDataUtils {
 		}
 	}
 	
-	public static function stitchSpriteSheetsFn(sourceBitmapData:BitmapData, tileDimensions:Pair<Int>):Array<Pair<Int>> -> ?(BitmapData -> BitmapData) -> Int -> BitmapData {
+	public static function stitchSpriteSheetsFn(sourceBitmapData:BitmapData, tileDimensions:Pair<Int>):Array<Pair<Int>> -> ?(BitmapData -> BitmapData) -> ?Int -> BitmapData {
 		return function(tiles:Array<Pair<Int>>, ?transformFn:BitmapData -> BitmapData = null, ?columns:Int = 0):BitmapData {
 			var transformedBitmapData:Array<BitmapData> = new Array<BitmapData>();
 			var getSpriteFn = getSpriteFromSheetFn(sourceBitmapData, tileDimensions);
 
 			for (i in 0...tiles.length) {
 				var tileCoords = tiles[i];
-				transformedBitmapData.push(getSpriteFn(tileCoords, transformFn));
+				if (tileCoords.x >= 0 && tileCoords.y >= 0) {
+					transformedBitmapData.push(getSpriteFn(tileCoords, transformFn));
+				} else {
+					var transparentBD:BitmapData = new BitmapData(tileDimensions.x, tileDimensions.y, true, 0);
+					if (transformFn != null) {
+						transparentBD = transformFn(transparentBD);
+					}
+					transformedBitmapData.push(transparentBD);
+				}
 			}
 			
 			var returnBitmapData:BitmapData;

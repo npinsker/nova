@@ -1,5 +1,6 @@
 package nova;
 
+import nova.utils.ArrayUtils;
 import nova.utils.DefaultMaps.DefaultIntMap;
 import nova.utils.DefaultMaps.DefaultStringMap;
 
@@ -7,14 +8,17 @@ import nova.utils.DefaultMaps.DefaultStringMap;
  * ...
  * @author Nathan Pinsker
  */
+
 @:generic
 class GroupsIntMap<K> {
 	public var _map:DefaultIntMap<Array<K>>;
 	public var _evalFn:K -> Int;
+	public var _cmpFn:K -> K -> Bool;
 	
-	public function new(evalFn:K -> Int, objectsToGroup:Array<K> = null) {
+	public function new(evalFn:K -> Int, objectsToGroup:Iterable<K> = null, ?cmpFn:K -> K -> Bool = null) {
 		_map = new DefaultIntMap<Array<K>>(function() { return []; });
 		_evalFn = evalFn;
+		_cmpFn = cmpFn;
 		
 		if (objectsToGroup != null) {
 			for (object in objectsToGroup) {
@@ -38,10 +42,12 @@ class GroupsIntMap<K> {
 	
 	public function update(object:K, ?oldGroup:Int = null) {
 		if (oldGroup != null) {
-			_map.get(oldGroup).remove(object);
+			if (_cmpFn != null) {
+			}
+			ArrayUtils.remove(_map.get(oldGroup), object, _cmpFn);
 		} else {
 			for (group in _map.keys()) {
-				_map.get(group).remove(object);
+				ArrayUtils.remove(_map.get(group), object, _cmpFn);
 			}
 		}
 		add(object);

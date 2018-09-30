@@ -5,6 +5,7 @@ import flixel.FlxSprite;
 import flixel.group.FlxSpriteGroup;
 import flixel.text.FlxText;
 import flixel.util.FlxColor;
+import nova.utils.StructureUtils;
 import openfl.Assets;
 import openfl.display.BitmapData;
 
@@ -16,17 +17,7 @@ class DialogBoxFactory {
 	}
 	
 	public function create(messages:Array<Dynamic>, overrideOptions:Dynamic = null):DialogBox {
-		var merged:Dynamic = {};
-		if (overrideOptions != null) {
-			for (field in Reflect.fields(overrideOptions)) {
-				Reflect.setField(merged, field, Reflect.field(overrideOptions, field));
-			}
-		}
-		for (field in Reflect.fields(options)) {
-			if (!Reflect.hasField(merged, field)) {
-				Reflect.setField(merged, field, Reflect.field(options, field));
-			}
-		}
+		var merged:Dynamic = StructureUtils.merge(options, overrideOptions);
 		return new DialogBox(messages, merged);
 	}
 }
