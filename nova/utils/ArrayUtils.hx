@@ -27,6 +27,19 @@ class ArrayUtils {
 		return foldFn(a, Math.max);
 	}
 	
+	public static function minBy<T>(a:Array<T>, cmpFn:T -> Float):T {
+		var bestIndex:Int = 0;
+		var bestValue:Float = cmpFn(a[0]);
+		for (i in 1...a.length) {
+			var value:Float = cmpFn(a[i]);
+			if (value < bestValue) {
+				bestValue = value;
+				bestIndex = i;
+			}
+		}
+		return a[bestIndex];
+	}
+	
 	public static function last<T>(a:Array<T>):T {
 		return a[a.length - 1];
 	}
@@ -43,6 +56,22 @@ class ArrayUtils {
 		return -1;
 	}
 	
+	public static function indices<T>(a:Array<T>, b:Array<Int>):Array<T> {
+		var r = new Array<T>();
+		for (i in b) {
+			r.push(a[i]);
+		}
+		return r;
+	}
+	
+	public static function extend<T>(a:Array<T>, b:Array<T>):Array<T> {
+		for (k in b) {
+			a.push(k);
+		}
+		
+		return a;
+	}
+	
 	public static function remove<T>(a:Array<T>, element:T, ?cmpFn:T -> T -> Bool = null):Bool {
 		var index = indexOf(a, element, cmpFn);
 		
@@ -50,6 +79,40 @@ class ArrayUtils {
 			a.splice(index, 1);
 		}
 		return (index != -1);
+	}
+	
+	public static function exactMatch<T>(a:Array<T>, b:Array<T>) {
+		if (a.length != b.length) return false;
+		for (i in 0...a.length) {
+			if (a[i] != b[i]) return false;
+		}
+		return true;
+	}
+	
+	public static function randomShuffle<T>(a:Array<T>):Void {
+		for (i in 0...a.length) {
+			var t:T = a[i];
+			var pivot = Std.random(a.length - i) + i;
+			a[i] = a[pivot];
+			a[pivot] = t;
+		}
+	}
+	
+	public static function filterByIndex<T>(a:Array<T>, fn:Int -> Bool):Array<T> {
+		var ret:Array<T> = new Array<T>();
+		for (i in 0...a.length) {
+			if (fn(i)) {
+				ret.push(a[i]);
+			}
+		}
+		return ret;
+	}
+	
+	public static function eachRow<T>(a:Array<Array<T>>, fn:Array<T> -> Array<T>):Array<Array<T>> {
+		for (i in 0...a.length) {
+			a[i] = fn(a[i]);
+		}
+		return a;
 	}
 	
 	public static function to2D<T>(a:Array<T>, columns:Int):Array<Array<T>> {

@@ -1,5 +1,6 @@
 package nova.utils;
 
+import flixel.FlxSprite;
 import openfl.Assets;
 import openfl.geom.Matrix;
 import openfl.display.BitmapData;
@@ -107,11 +108,19 @@ class BitmapDataUtils {
 		}
 	}
 	
+	public static function crop(bitmapData:BitmapData, point:Pair<Int>, dims:Pair<Int>):BitmapData {
+		var newBitmapData:BitmapData = new BitmapData(dims.x, dims.y);
+		newBitmapData.copyPixels(bitmapData, new Rectangle(point.x, point.y, point.x + dims.x, point.y + dims.y), new Point(0, 0));
+		return newBitmapData;
+	}
+	
 	public static function intToIntPairFn(columns:Int):Int -> Pair<Int> {
-		return function(id:Int) {
-			if (columns == 0) {
+		if (columns == 0) {
+			return function(id:Int) {
 				return [id, 0];
 			}
+		}
+		return function(id:Int) {
 			return [id % columns, Std.int(id / columns)];
 		}
 	}

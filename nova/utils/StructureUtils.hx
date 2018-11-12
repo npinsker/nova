@@ -31,6 +31,19 @@ class StructureUtils {
 	}
 	
 	public static function prop(struct:Dynamic, prop:String):Dynamic {
+		// A concise way to access a property of a Dynamic object. Returns null if the property
+		// doesn't exist.
+		//
+		// For example, if the object has the form
+		// {
+		//   'name': 'Moley',
+		//   'location': {
+		//     'x': 4.5,
+		//     'y': 6.0
+		//   }
+		// }
+		// then the location's x-coordinate can be accessed with [struct].prop('location.x').
+		//
 		// TODO: support dots in property names: a.b.[Mr. Very Important Pup]
 		var splitProp = prop.split('.');
 		var index = 0;

@@ -81,6 +81,14 @@ abstract Pair<K:Float>(Array<K>) {
 		return this[0] == rhs[0] && this[1] == rhs[1];
 	}
 	
+	public function norm():Float {
+		return Math.sqrt(this[0] * this[0] + this[1] * this[1]);
+	}
+	
+	public function normSquared():K {
+		return this[0] * this[0] + this[1] * this[1];
+	}
+	
 	public function copy():Pair<K> {
 		return new Pair<K>(this[0], this[1]);
 	}

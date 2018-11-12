@@ -7,6 +7,9 @@ import flixel.effects.particles.FlxEmitter;
 import flixel.system.FlxAssets.FlxGraphicAsset;
 import flixel.util.FlxDestroyUtil;
 import flixel.util.helpers.FlxRangeBounds;
+import nova.utils.Pair;
+
+using nova.utils.ArrayUtils;
 
 typedef FlxEmitter = FlxTypedEmitter<FlxParticle>;
 
@@ -17,9 +20,9 @@ typedef FlxEmitter = FlxTypedEmitter<FlxParticle>;
  */
 class NovaEmitter extends FlxEmitter {
 	
-	public var colorTransformR(default, null):FlxRangeBounds<Float> = new FlxRangeBounds<Float>(0.0, 0.0);
-	public var colorTransformG(default, null):FlxRangeBounds<Float> = new FlxRangeBounds<Float>(0.0, 0.0);
-	public var colorTransformB(default, null):FlxRangeBounds<Float> = new FlxRangeBounds<Float>(0.0, 0.0);
+	public var colorTransformR:Pair<Float> = [0.0, 0.0];
+	public var colorTransformG:Pair<Float> = [0.0, 0.0];
+	public var colorTransformB:Pair<Float> = [0.0, 0.0];
 	
 	/**
 	 * Creates a new `FlxTypedEmitter` object at a specific position.
@@ -94,6 +97,8 @@ class NovaEmitter extends FlxEmitter {
 		for (i in 0...Quantity)
 			add(loadParticle(Graphics, Quantity, bakedRotationAngles, Multiple, AutoBuffer, totalFrames));
 		
+		this.members.randomShuffle();
+		
 		return this;
 	}
 	
@@ -128,12 +133,11 @@ class NovaEmitter extends FlxEmitter {
 	
 	public override function emitParticle():FlxParticle {
 		var particle:FlxParticle = super.emitParticle();
-		
-		if (colorTransformR.active) {
-			var adjustR = FlxG.random.float(colorTransformR.start.min, colorTransformR.start.max);
-			var adjustG = FlxG.random.float(colorTransformG.start.min, colorTransformG.start.max);
-			var adjustB = FlxG.random.float(colorTransformB.start.min, colorTransformB.start.max);
-			particle.setColorTransform(1.0, 1.0, 1.0, 1, Std.int(adjustR), Std.int(adjustG), Std.int(adjustB));
+		if (Math.abs(colorTransformR.x) > 1e-6 || Math.abs(colorTransformG.x) > 1e-6 || Math.abs(colorTransformB.x) > 1e-6) {
+			var adjustR = FlxG.random.float(colorTransformR.x, colorTransformR.y);
+			var adjustG = FlxG.random.float(colorTransformG.x, colorTransformG.y);
+			var adjustB = FlxG.random.float(colorTransformB.x, colorTransformB.y);
+			particle.setColorTransform(1.0, 1.0, 1.0, 1.0, Std.int(adjustR), Std.int(adjustG), Std.int(adjustB), 0);
 		}
 		return particle;
 	}

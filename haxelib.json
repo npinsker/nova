@@ -1,12 +1,12 @@
 {
-	"name": "nova",
-	"url" : "https://github.com/npinsker/nova",
-	"license": "MIT",
-	"tags": ["game", "openfl", "flash", "neko", "flixel"],
-	"description": "Nova is a set of game development tools on top of Flixel to supercharge common tasks.",
-	"version": "0.0.6",
-	"releasenote": "Add FlxLocalSprite and fix a few other bugs.",
-	"contributors": ["npinsker"],
+  "name": "nova",
+  "url" : "https://github.com/npinsker/nova",
+  "license": "MIT",
+  "tags": ["game", "openfl", "flash", "neko", "flixel"],
+  "description": "Nova is a set of game development tools on top of Flixel to supercharge common tasks.",
+  "version": "0.1.4",
+  "releasenote": "Complete rewrite of DialogBox to incorporate DialogParser.",
+  "contributors": ["npinsker"],
   "dependencies": {
     "flixel": ""
   }
