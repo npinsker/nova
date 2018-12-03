@@ -1,6 +1,8 @@
 package nova.utils;
 
 import flixel.FlxSprite;
+import flixel.util.typeLimit.OneOfTwo;
+import nova.render.TiledBitmapData;
 import openfl.Assets;
 import openfl.geom.Matrix;
 import openfl.display.BitmapData;
@@ -125,6 +127,23 @@ class BitmapDataUtils {
 		}
 	}
 	
+	public static function toIntPairFn(columns:Int):OneOfTwo<Int, Pair<Int>> -> Pair<Int> {
+		if (columns == 0) {
+			return function(id:OneOfTwo<Int, Pair<Int>>):Pair<Int> {
+				if (Std.is(id, Int)) {
+					return [id, 0];
+				}
+				return id;
+			}
+		}
+		return function(id:OneOfTwo<Int, Pair<Int>>):Pair<Int> {
+			if (Std.is(id, Int)) {
+				return [id % columns, Std.int(id / columns)];
+			}
+			return id;
+		}
+	}
+	
 	public static function loadFromObject(object:Dynamic):BitmapData {
 		if (!Reflect.hasField(object, 'image')) {
 			trace("Error: object " + object + " has no `image` field!");
@@ -135,5 +154,20 @@ class BitmapDataUtils {
 			toReturn = object.transform(toReturn);
 		}
 		return toReturn;
+	}
+	
+	public static function loadTilesFromObject(object:Dynamic):TiledBitmapData {
+		if (!Reflect.hasField(object, 'image')) {
+			trace("Error: object " + object + " has no `image` field!");
+			return null;
+		}
+		var tileWidth = 0;
+		var tileHeight = 0;
+		if (Reflect.hasField(object, 'width')) tileWidth = object.width;
+		if (Reflect.hasField(object, 'tileWidth')) tileWidth = object.tileWidth;
+		if (Reflect.hasField(object, 'height')) tileHeight = object.height;
+		if (Reflect.hasField(object, 'tileHeight')) tileHeight = object.tileHeight;
+		
+		return new TiledBitmapData(object.image, tileWidth, tileHeight, StructureUtils.prop(object, 'transform'));
 	}
 }

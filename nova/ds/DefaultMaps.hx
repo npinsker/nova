@@ -1,4 +1,4 @@
-package nova.utils;
+package nova.ds;
 
 import haxe.ds.StringMap;
 import haxe.ds.IntMap;
@@ -56,11 +56,11 @@ class DefaultIntMap<V> implements IMap<Int, V> {
 
 @:generic
 class DefaultStringMap<V> implements IMap<String, V> {
-	private var _map:StringMap<V>;
+	private var _map:Map<String, V>;
 	private var defaultConstructor:Void -> V;
 	
 	public function new(defaultConstructor:Void -> V = null) {
-		_map = new StringMap<V>();
+		_map = new Map<String, V>();
 		this.defaultConstructor = defaultConstructor;
 	}
 
@@ -89,7 +89,7 @@ class DefaultStringMap<V> implements IMap<String, V> {
 	}
 
 	@:to
-	public inline function toStringMap():StringMap<V> {
+	public inline function toStringMap():Map<String, V> {
 		return _map;
 	}
 }

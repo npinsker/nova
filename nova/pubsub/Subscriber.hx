@@ -3,16 +3,22 @@ package nova.pubsub;
 /**
  * @author Nathan Pinsker
  */
-class Subscriber<T> {
-	public var message:Dynamic;
+class Subscriber {
+	public var read:Dynamic -> Void;
+	public var channel:String;
 	
-	public function subscribe(publisher:Publisher<T>) {
-		publisher.add(this);
+	public function new(channel:String, read:Dynamic -> Void) {
+		this.channel = channel;
+		this.read = read;
+		
+		var instance = PubSubFacilitator.instance;
+		if (!instance.subscribers.exists(channel)) {
+			instance.subscribers.set(channel, []);
+		}
+		instance.subscribers.get(channel).push(this);
 	}
 	
-	public function read():Dynamic {
-		return message;
+	public function destroy() {
+		PubSubFacilitator.instance.subscribers.get(channel).remove(this);
 	}
-	
-	public function update() { }
 }

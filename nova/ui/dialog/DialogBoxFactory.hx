@@ -13,9 +13,15 @@ import openfl.display.BitmapData;
 
 class DialogBoxFactory {
 	public var options:Dynamic;
+	public var defaultGlobalStore:Map<String, Dynamic>;
 	
 	public function new(options:Dynamic) {
 		this.options = options;
+		this.defaultGlobalStore = new Map<String, Dynamic>();
+		
+		if (!Reflect.hasField(this.options, 'globalVariables')) {
+			this.options.globalVariables = this.defaultGlobalStore;
+		}
 	}
 	
 	public function create(messages:OneOfTwo<DialogNodeSequence, Array<String>>, overrideOptions:Dynamic = null):DialogBox {
@@ -24,5 +30,10 @@ class DialogBoxFactory {
 			messages = DialogParser.parseLines(messages);
 		}
 		return new DialogBox(messages, merged);
+	}
+	
+	public function createControlled(overrideOptions:Dynamic = null):ControlledDialogBox {
+		var merged:Dynamic = StructureUtils.merge(options, overrideOptions);
+		return new ControlledDialogBox(merged);
 	}
 }

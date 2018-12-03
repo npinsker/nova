@@ -10,7 +10,6 @@ using nova.utils.ArrayUtils;
 
 enum ExpressionNodeType {
 	VARIABLE;
-	EQUALS;
 	
 	ARITHMETIC;
 	
@@ -20,6 +19,11 @@ enum ExpressionNodeType {
 	AND;
 	OR;
 	NOT;
+	EQUALS;
+	LESS_THAN;
+	GREATER_THAN;
+	LESS_THAN_EQUALS;
+	GREATER_THAN_EQUALS;
 }
 
 class ExpressionNode {
@@ -81,7 +85,7 @@ class ExpressionNode {
 			trace("Unknown op " + value);
 			return null;
 		}
-		if (type == EQUALS) {
+		if (type == EQUALS || type == LESS_THAN || type == GREATER_THAN || type == LESS_THAN_EQUALS || type == GREATER_THAN_EQUALS) {
 			if (leftChild == null || rightChild == null) {
 				trace("Attempt to evaluate ARITHMETIC op with a null child!");
 				return null;
@@ -89,8 +93,25 @@ class ExpressionNode {
 			var leftResult:ExpressionNode = leftChild.evaluate(variableMap);
 			var rightResult:ExpressionNode = rightChild.evaluate(variableMap);
 			
-			if (leftResult.type != rightResult.type || leftResult.value != rightResult.value) {
+			if (leftResult.type != rightResult.type) {
+				trace("Warning: Attempt to evaluate type " + type + " on incompatible values " + leftResult + " and " + rightResult + ". (Returning FALSE)");
 				return FALSE;
+			}
+			
+			if (type == EQUALS) {
+				return (leftResult.value == rightResult.value ? TRUE : FALSE);
+			}
+			if (type == LESS_THAN) {
+				return (leftResult.value < rightResult.value ? TRUE : FALSE);
+			}
+			if (type == LESS_THAN_EQUALS) {
+				return (leftResult.value <= rightResult.value ? TRUE : FALSE);
+			}
+			if (type == GREATER_THAN) {
+				return (leftResult.value > rightResult.value ? TRUE : FALSE);
+			}
+			if (type == GREATER_THAN_EQUALS) {
+				return (leftResult.value >= rightResult.value ? TRUE : FALSE);
 			}
 			return TRUE;
 		}

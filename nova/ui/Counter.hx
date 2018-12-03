@@ -11,37 +11,40 @@ import flixel.graphics.frames.FlxBitmapFont;
  * @author Nathan Pinsker
  */
 class Counter extends FlxLocalSprite {
-	public var setting:Int = 10;
+	public var value:Int = 1;
+	public var maxValue:Int;
 	public var callback:Int -> Void;
 	
 	public var _text:FlxBitmapText;
 	
-	public function new(callback:Int -> Void = null) {
+	public function new(callback:Int -> Void = null, maxValue:Int = 99) {
 		super();
 		this.callback = callback;
+		this.maxValue = maxValue;
 		
-		_text = new FlxBitmapText(FlxBitmapFont.fromMonospace('assets/images/digits.png', '0123456789', new FlxPoint(30, 40)));
+		_text = new FlxBitmapText(FlxBitmapFont.fromAngelCode('assets/images/digits.png',
+			'assets/data/digits_xml.txt'));
 		
-		_text.text = Std.string(setting);
+		_text.text = Std.string(value);
 		
 		add(_text);
 	}
 	
 	public function handleInput() {
 		if (InputController.justPressed(Button.UP)) {
-			if (setting < 99) {
-				setting++;
-				_text.text = Std.string(setting);
+			if (value < this.maxValue) {
+				value++;
+				_text.text = Std.string(value);
 			}
 		} else if (InputController.justPressed(Button.DOWN)) {
-			if (setting > 0) {
-				setting--;
-				_text.text = Std.string(setting);
+			if (value > 1) {
+				value--;
+				_text.text = Std.string(value);
 			}
 		}
 		
 		if (InputController.justPressed(Button.CONFIRM)) {
-			this.callback(setting);
+			this.callback(value);
 			
 			this.destroy();
 		}

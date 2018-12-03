@@ -8,6 +8,7 @@ package nova.ui.dialog;
 using nova.utils.ArrayUtils;
 
 enum SyntaxNodeType {
+	DEBUG;
 	TEXT;
 	CHOICE;
 	CHOICE_BOX;
@@ -15,6 +16,8 @@ enum SyntaxNodeType {
 	VARIABLE_ASSIGN;
 	IF;
 	JUMP;
+	EMIT;
+	GLOBAL;
 	
 	EXPRESSION;
 }

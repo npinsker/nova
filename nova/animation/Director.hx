@@ -117,6 +117,15 @@ class Director {
 						  frames);
 	}
 	
+	private static function _moveByAction(point:Pair<Int>, frames:Int):Action {
+		return new Action(function(sprite:FlxSprite, object:Dynamic) { object.x = sprite.x; object.y = sprite.y; object.point = point; },
+		                  function(sprite:FlxSprite, frame:Int, object:Dynamic):Void {
+							  sprite.x += (1.0 / frames) * object.point[0];
+							  sprite.y += (1.0 / frames) * object.point[1];
+						  },
+						  frames);
+	}
+	
 	private static function _jumpInArcAction(verticalDist:Int, frames:Int):Action {
 		return new Action(function(sprite:FlxSprite, object:Dynamic) {
 						      object.mult = verticalDist / Std.int(frames * frames / 4 + 0.2);
@@ -165,13 +174,7 @@ class Director {
 	}
 	
 	public static function moveBy(sprite:OneOfTwo<FlxSprite, Actor>, point:Pair<Int>, frames:Int, tag:String = null):Actor {
-		var startPoint:Pair<Int>;
-		if (Std.is(sprite, FlxSprite)) {
-			startPoint = [Std.int(cast(sprite, FlxSprite).x), Std.int(cast(sprite, FlxSprite).y)];
-		} else {
-			startPoint = [Std.int(cast(sprite, Actor).sprite.x), Std.int(cast(sprite, Actor).sprite.y)];
-		}
-		return directorChainableFn(_moveToAction(startPoint + point, frames), sprite, frames, tag);
+		return directorChainableFn(_moveByAction(point, frames), sprite, frames, tag);
 	}
 	
 	public static function jumpInArc(sprite:OneOfTwo<FlxSprite, Actor>, verticalDist:Int, frames:Int, tag:String = null):Actor {

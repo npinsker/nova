@@ -19,8 +19,19 @@ class TileUtils {
 		var nudgeX:Float = 0;
 		var nudgeY:Float = 0;
 		var nudged:Bool = false;
-		for (y in 0...tiles.length) {
-			for (x in 0...tiles[0].length) {
+		
+		var startX:Int = Math.floor((rect.x - offset.x) / tileDims.x - 0.01);
+		var endX:Int = Math.ceil((rect.x + rect.width - offset.x) / tileDims.x + 0.01);
+		var startY:Int = Math.floor((rect.y - offset.y) / tileDims.y - 0.01);
+		var endY:Int = Math.ceil((rect.y + rect.height - offset.y) / tileDims.y + 0.01);
+		
+		if (startX < 0) startX = 0;
+		if (endX >= tiles[0].length) endX = tiles[0].length - 1;
+		if (startY < 0) startY = 0;
+		if (endY >= tiles.length) endY = tiles.length - 1;
+		
+		for (y in startY...endY) {
+			for (x in startX...endX) {
 				var tileStart:Pair<Float> = offset + [x * tileDims.first, y * tileDims.second];
 				
 				if (tileStart.x + tileDims.x > rect.x && tileStart.y + tileDims.y > rect.y &&
@@ -63,7 +74,7 @@ class TileUtils {
 		return [nudgeX, nudgeY];
 	}
 	
-	public static function nudgeOutOfObjects<T>(collisionRects:Array<FlxRect>, rect:FlxRect):Pair<Float> {
+	public static function nudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect):Pair<Float> {
 		var nudgeX:Float = 0;
 		var nudgeY:Float = 0;
 		var nudged:Bool = false;

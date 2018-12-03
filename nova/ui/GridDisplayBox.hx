@@ -41,6 +41,8 @@ class GridDisplayBox extends FlxLocalSprite {
 		bg = new LocalSpriteWrapper(new FlxSprite());
 		if (Reflect.hasField(options, 'bgBitmapData')) {
 			bgBitmapData = options.bgBitmapData;
+			width = bgBitmapData.width;
+			height = bgBitmapData.height;
 		} else {
 			bgBitmapData = new BitmapData(Std.int(width), Std.int(height), false, 0x999999);
 		}
@@ -62,17 +64,18 @@ class GridDisplayBox extends FlxLocalSprite {
 	}
 	
 	public function focus() {
-		var nbg = new BitmapData(bgBitmapData.width + 30, bgBitmapData.height + 30, true, 0);
-		nbg.copyPixels(bgBitmapData, bgBitmapData.rect, new Point(15, 15));
-		nbg.applyFilter(nbg, nbg.rect, new Point(0, 0), new GlowFilter(0x00FF00, 1, 20, 20, 5, 1, false, true));
-		nbg.applyFilter(nbg, nbg.rect, new Point(0, 0),
-			new ColorMatrixFilter([0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 0, 63, 0, 0, 0, 0.75, 0]));
-		nbg.copyPixels(bgBitmapData, bgBitmapData.rect, new Point(15, 15));
+		var nbg:BitmapData = bgBitmapData.clone();
+		nbg.applyFilter(nbg, nbg.rect, new Point(0, 0), new ColorMatrixFilter(
+			[
+				0, 0, 0, 0, 114,
+				0, 0, 0, 0, 170,
+				0, 0, 0, 0, 234,
+				0, 0, 0, 1, 255
+			]
+			));
 		bgBitmapData = nbg;
 		bg._sprite = new FlxSprite();
 		bg._sprite.loadGraphic(bgBitmapData);
-		bg.x = -15;
-		bg.y = -15;
 	}
 
 	public function loseFocus() {
@@ -83,8 +86,6 @@ class GridDisplayBox extends FlxLocalSprite {
 		}
 		bg._sprite = new FlxSprite();
 		bg._sprite.loadGraphic(bgBitmapData);
-		bg.x = 0;
-		bg.y = 0;
 	}
 	
 	public function setChecked(visible:Bool) {

@@ -12,6 +12,7 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
 import flixel.util.FlxTimer;
 import flixel.util.typeLimit.OneOfTwo;
+import nova.input.Focusable;
 import nova.render.FlxLocalSprite;
 import nova.utils.BitmapDataUtils;
 import nova.utils.Pair;
@@ -26,11 +27,12 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 	public static inline var DEFAULT_TEXT_PADDING_Y:Int = 5;
 	public static inline var DIRECTOR_DIALOG_TRANSITION_STR:String = '__dialogTransition';
 	
-	public static inline var NUM_COLUMNS:Int = 5;
-	public static inline var MIN_ROWS:Int = 5;
+	public static inline var NUM_COLUMNS:Int = 4;
+	public static inline var MIN_ROWS:Int = 4;
 	
 	public var grid:Array<Array<GridDisplayBox>>;
 	public var inventory:Array<Dynamic>;
+	public var columns:Int;
 	
 	public var focus:Pair<Int> = [0, 0];
 	
@@ -38,6 +40,7 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 		super();
 		grid = new Array<Array<GridDisplayBox>>();
 		this.inventory = inventory.copy();
+		this.columns = (Reflect.hasField(options, 'columns') ? options.columns : NUM_COLUMNS);
 		var numSlots = inventory.length;
 		if (NUM_COLUMNS * MIN_ROWS > numSlots) {
 			numSlots = NUM_COLUMNS * MIN_ROWS;
@@ -52,8 +55,8 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 			}
 			var gdb = new GridDisplayBox(bd, inventory[i], options);
 			add(gdb);
-			gdb.x = 60 * (i % NUM_COLUMNS);
-			gdb.y = 60 * Std.int(i / NUM_COLUMNS);
+			gdb.x = (gdb.width + 4 * Tile.TILE_SCALE) * (i % NUM_COLUMNS);
+			gdb.y = (gdb.height + 4 * Tile.TILE_SCALE) * Std.int(i / NUM_COLUMNS);
 			grid[grid.length - 1].push(gdb);
 		}
 		grid[focus.y][focus.x].focus();

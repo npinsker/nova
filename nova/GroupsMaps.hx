@@ -1,8 +1,8 @@
 package nova;
 
+import nova.ds.DefaultMaps.DefaultIntMap;
+import nova.ds.DefaultMaps.DefaultStringMap;
 import nova.utils.ArrayUtils;
-import nova.utils.DefaultMaps.DefaultIntMap;
-import nova.utils.DefaultMaps.DefaultStringMap;
 
 /**
  * ...

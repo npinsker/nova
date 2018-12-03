@@ -10,6 +10,10 @@ import flixel.math.FlxAngle;
 import flixel.system.FlxAssets.FlxGraphicAsset;
 import flixel.util.FlxSort;
 import nova.utils.Pair;
+import openfl.display.BitmapData;
+import openfl.geom.ColorTransform;
+
+using flixel.util.FlxColorTransformUtil;
 
 /**
  * ...
@@ -57,9 +61,23 @@ class LocalWrapper<T:FlxSprite> extends FlxLocalSprite {
 	override function set_alpha(Value:Float):Float {
 		alpha = Value;
 		if (!_skipTransformChildren) {
-			_sprite.alpha = Value;
+			_sprite.alpha = Value * globalAlpha;
 		}
 		return Value;
+	}
+	
+	@:noCompletion
+	override function get_pixels():BitmapData {
+		return _sprite.get_pixels();
+	}
+	
+	@:noCompletion
+	override function set_pixels(Pixels:BitmapData):BitmapData {
+		return _sprite.set_pixels(Pixels);
+	}
+	
+	override function updateColorTransform():Void {
+		_sprite.alpha = alpha * globalAlpha;
 	}
 	
 	override public function draw():Void {
@@ -162,34 +180,45 @@ class FlxLocalSprite extends FlxSprite {
 	}
 	
 	override function set_x(Value:Float):Float {
+		x = Value;
 		if (!_skipTransformChildren) {
-			for (child in children) {
-				_percolate(function(n:FlxLocalSprite, v:Float) { n.globalOffset.x = v; },
-						   function(n:FlxLocalSprite) { return n.globalOffset.x + n.x; });
-			}
+			_percolate(function(n:FlxLocalSprite, v:Float) { n.globalOffset.x = v; },
+					   function(n:FlxLocalSprite) { return n.globalOffset.x + n.x; });
 		}
-		return x = Value;
+		return x;
 	}
 	
 	override function set_y(Value:Float):Float {
+		y = Value;
 		if (!_skipTransformChildren) {
-			for (child in children) {
-				_percolate(function(n:FlxLocalSprite, v:Float) { n.globalOffset.y = v; },
-						   function(n:FlxLocalSprite) { return n.globalOffset.y + n.y; });
-			}
+			_percolate(function(n:FlxLocalSprite, v:Float) { n.globalOffset.y = v; },
+					   function(n:FlxLocalSprite) { return n.globalOffset.y + n.y; });
 		}
-		return y = Value;
+		return y;
 	}
 	
 	@:noCompletion
 	override function set_alpha(Value:Float):Float {
+		alpha = Value;
+		
 		if (!_skipTransformChildren) {
-			for (child in children) {
-				_percolate(function(n:FlxLocalSprite, v:Float) { n.globalAlpha = v; },
-						   function(n:FlxLocalSprite) { return n.globalAlpha * n.alpha; });
-			}
+			_percolate(function(n:FlxLocalSprite, v:Float) { n.globalAlpha = v; n.updateColorTransform(); },
+					   function(n:FlxLocalSprite) { return n.globalAlpha * n.alpha; });
 		}
-		return super.set_alpha(Value);
+		return Value;
+	}
+	
+	override function updateColorTransform():Void {
+		if (colorTransform == null)
+			colorTransform = new ColorTransform();
+
+		useColorTransform = (alpha * globalAlpha) != 1 || color != 0xffffff;
+		if (useColorTransform)
+			colorTransform.setMultipliers(color.redFloat, color.greenFloat, color.blueFloat, alpha * globalAlpha);
+		else
+			colorTransform.setMultipliers(1, 1, 1, 1);
+		
+		dirty = true;
 	}
 	
 	function get_globalX():Float {

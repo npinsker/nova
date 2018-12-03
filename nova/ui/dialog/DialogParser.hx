@@ -20,6 +20,10 @@ enum DialogTokenType {
 	STRING;
 	EQUALS_SIGN;
 	DOUBLE_EQUALS_SIGN;
+	LESS_THAN_SIGN;
+	LESS_THAN_EQUALS_SIGN;
+	GREATER_THAN_SIGN;
+	GREATER_THAN_EQUALS_SIGN;
 	OPEN_PARENTHESIS;
 	CLOSE_PARENTHESIS;
 	COLON;
@@ -40,16 +44,19 @@ class DialogToken {
  
 class DialogParser {
 	private static var RESERVED_STRINGS:Array<String> = [
+		"global",
 		"label",
 		"define",
 		"jump",
 		"choice_box",
 		"clear",
 		"if",
+		"emit",
 		"else",
 		"not",
 		"or",
 		"and",
+		"debug",
 	];
 	
 	public static function isAlphabetic(c:Int) {
@@ -85,9 +92,19 @@ class DialogParser {
 				}
 				builtTokens.push(new DialogToken(NUMBER, Std.parseInt(text.substr(anchorI, i - anchorI))));
 			} else if (text.charAt(i) == '\"' || text.charAt(i) == '\'') {
-				var next = text.indexOf(text.charAt(i), i + 1);
-				builtTokens.push(new DialogToken(STRING, text.substr(i + 1, next - (i + 1))));
-				i = next + 1;
+				var pt = i + 1;
+				var next = text.indexOf(text.charAt(i), pt);
+				while (next != -1 && text.charAt(next - 1) == '\\') {
+					pt = next + 1;
+					next = text.indexOf(text.charAt(i), pt);
+				}
+				if (next != -1) {
+					builtTokens.push(new DialogToken(STRING, text.substr(i + 1, next - (i + 1)).replace('\\', '')));
+					i = next + 1;
+				} else {
+					trace("Error: unterminated string: [" + text + "]!");
+					return null;
+				}
 			} else if (text.charAt(i) == '(') {
 				builtTokens.push(new DialogToken(OPEN_PARENTHESIS));
 				++i;
@@ -103,6 +120,8 @@ class DialogParser {
 			} else if (text.charAt(i) == '>') {
 				builtTokens.push(new DialogToken(RESERVED, 'choice'));
 				++i;
+			} else if (text.charAt(i) == '#') {
+				break;
 			} else if (text.charAt(i) == '$') {
 				builtTokens.push(new DialogToken(DOLLAR_SIGN));
 				++i;
@@ -157,6 +176,11 @@ class DialogParser {
 		
 		for (i in 0...text.length) {
 			var line:String = text[i];
+			var tokens:Array<DialogToken> = parseLine(line);
+			if (tokens.length == 0) {
+				continue;
+			}
+			
 			var indentation = 0;
 			while (indentation < line.length && (line.charAt(indentation) == ' ' || line.charAt(indentation) == '\t')) {
 				indentation++;
@@ -173,26 +197,47 @@ class DialogParser {
 				callStack.pop();
 			}
 			
-			var tokens:Array<DialogToken> = parseLine(line);
-			
 			if (tokens[0].type == RESERVED) {
 				if (tokens[0].value == 'define') {
 					var shortName = indexOfTokenType(tokens, VARIABLE);
 					var tk = indexOfTokenType(tokens, OPEN_PARENTHESIS);
 					
 					characters[tokens[shortName].value] = tokens[tk + 1].value;
+				} if (tokens[0].value == 'global') {
+					var i = 1;
+					if ([VARIABLE, STRING].indexOf(tokens[i].type) == -1) {
+						trace('Line ' + i + ': unknown token ' + tokens[i].value + ' after "global". Should be a variable.');
+					}
+					callStack.last().sequence.push(new DialogSyntaxNode(GLOBAL, tokens[i].value));
+					while (i < tokens.length - 1) {
+						if (tokens[i + 1].type == COMMA && [VARIABLE, STRING].indexOf(tokens[i + 2].type) != -1) {
+							i += 2;
+							callStack.last().sequence.push(new DialogSyntaxNode(GLOBAL, tokens[i].value));
+						} else {
+							trace('Line ' + i + ': unknown token ' + tokens[i].value + '. Should be a comma-separated list of variables.');
+						}
+					}
 				} else if (tokens[0].value == 'label') {
-					var newNode = new DialogSyntaxNode(LABEL, tokens[1].value, new DialogNodeSequence());
+					var newNode = new DialogSyntaxNode(LABEL, tokens[1].value);
+					callStack.last().sequence.push(newNode);
+				} else if (tokens[0].value == 'debug') {
+					var newNode = new DialogSyntaxNode(DEBUG, {line: i + 1, name: tokens[1].value});
 					callStack.last().sequence.push(newNode);
 				} else if (tokens[0].value == 'jump') {
 					var s1 = indexOfTokenType(tokens, VARIABLE);
 					var s2 = indexOfTokenType(tokens, STRING);
 					var labelName:String = tokens[Std.int(Math.max(s1, s2))].value;
 					callStack.last().sequence.push(new DialogSyntaxNode(JUMP, labelName));
+				} else if (tokens[0].value == 'emit') {
+					var s1 = indexOfTokenType(tokens, VARIABLE, 1);
+					var s2 = indexOfTokenType(tokens, STRING, 1);
+					var labelName:String = tokens[Std.int(Math.max(s1, s2))].value;
+					callStack.last().sequence.push(new DialogSyntaxNode(EMIT, labelName));
 				} else if (tokens[0].value == 'choice') {
 					var s1 = indexOfTokenType(tokens, STRING);
 					var s2 = indexOfTokenType(tokens, STRING, s1 + 1);
-					var newNode = new DialogSyntaxNode(CHOICE, {text: tokens[s1].value, tag: tokens[s2].value});
+					var s2_2 = indexOfTokenType(tokens, VARIABLE, s1 + 1);
+					var newNode = new DialogSyntaxNode(CHOICE, {text: tokens[s1].value, tag: tokens[(s2 > s2_2 ? s2 : s2_2)].value});
 					callStack.last().sequence.push(newNode);
 				} else if (tokens[0].value == 'choice_box') {
 					var newNode = new DialogSyntaxNode(CHOICE_BOX, null, new DialogNodeSequence());
@@ -222,6 +267,9 @@ class DialogParser {
 						speaker = characters.get(speaker);
 					}
 					var nextToken = indexOfTokenType(tokens, STRING, 1);
+					if (nextToken == -1) {
+						trace('[Warning] No value found for variable ' + tokens[0].value + '. (' + line + ')');
+					}
 					callStack.last().sequence.push(new DialogSyntaxNode(TEXT, {text: tokens[nextToken].value, speaker: speaker}));
 				}
 			} else if (tokens[0].type == STRING) {
@@ -248,8 +296,34 @@ class DialogParser {
 		var outsideIndices = findOutsideTokenIndices(tokens);
 		for (index in outsideIndices) {
 			var tok:DialogToken = tokens[index];
+			// clean this up
 			if (tok.type == RESERVED && (tok.value == 'and' || tok.value == 'or')) {
 				var root = new ExpressionNode((tok.value == 'and' ? AND : OR), null);
+				root.leftChild = parseExpression(tokens.slice(0, index));
+				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
+				return root;
+			} else if (tok.type == DOUBLE_EQUALS_SIGN) {
+				var root = new ExpressionNode(EQUALS, null);
+				root.leftChild = parseExpression(tokens.slice(0, index));
+				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
+				return root;
+			} else if (tok.type == LESS_THAN_SIGN) {
+				var root = new ExpressionNode(LESS_THAN, null);
+				root.leftChild = parseExpression(tokens.slice(0, index));
+				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
+				return root;
+			} else if (tok.type == LESS_THAN_EQUALS_SIGN) {
+				var root = new ExpressionNode(LESS_THAN_EQUALS, null);
+				root.leftChild = parseExpression(tokens.slice(0, index));
+				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
+				return root;
+			} else if (tok.type == GREATER_THAN_SIGN) {
+				var root = new ExpressionNode(GREATER_THAN, null);
+				root.leftChild = parseExpression(tokens.slice(0, index));
+				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
+				return root;
+			} else if (tok.type == GREATER_THAN_EQUALS_SIGN) {
+				var root = new ExpressionNode(GREATER_THAN_EQUALS, null);
 				root.leftChild = parseExpression(tokens.slice(0, index));
 				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
 				return root;

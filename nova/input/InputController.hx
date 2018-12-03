@@ -47,8 +47,12 @@ class InputController {
 	private var _inputMap:Map<Button, Array<FlxKey>>;
 	#end
 	
+	private var _disabled:Array<Button>;
+	
 	private function new() {
 		_inputMap = new Map<Button, Array<FlxKey>>();
+		
+		_disabled = [];
 	}
 	
 	#if (desktop || web)
@@ -61,6 +65,9 @@ class InputController {
 	#end
 	
 	public static function justPressed(button:Button) {
+		if (instance._disabled.indexOf(button) != -1) {
+			return false;
+		}
 		#if (desktop || web)
 		if (instance._inputMap.exists(button)) {
 			if (FlxG.keys.anyJustPressed(instance._inputMap.get(button))) {
@@ -73,6 +80,9 @@ class InputController {
 	}
 	
 	public static function pressed(button:Button) {
+		if (instance._disabled.indexOf(button) != -1) {
+			return false;
+		}
 		#if (desktop || web)
 		if (instance._inputMap.exists(button)) {
 			if (FlxG.keys.anyPressed(instance._inputMap.get(button))) {
@@ -94,5 +104,15 @@ class InputController {
 		#end
 
 		return false;
+	}
+	
+	public static function consume(button:Button) {
+		// Consumes a button press, so successive calls to 'pressed' will return false.
+		// Does not affect 'released' events.
+		instance._disabled.push(button);
+	}
+	
+	public static function update() {
+		instance._disabled = [];
 	}
 }
