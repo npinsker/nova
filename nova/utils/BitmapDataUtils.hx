@@ -49,7 +49,7 @@ class BitmapDataUtils {
 		
 		var middleWidth:Int = bitmapData.width - 2 * borderWidth;
 		
-		var middleBitmapData:BitmapData = new BitmapData(middleWidth, bitmapData.height);
+		var middleBitmapData:BitmapData = new BitmapData(middleWidth, bitmapData.height, true, 0);
 		middleBitmapData.copyPixels(bitmapData, new Rectangle(borderWidth, 0, middleWidth, bitmapData.height), new Point(0, 0));
 		
 		resultBitmapData.copyPixels(bitmapData, new Rectangle(0, 0, borderWidth, bitmapData.height), new Point(0, 0));
@@ -58,6 +58,27 @@ class BitmapDataUtils {
 		
 		var mx:Matrix = new Matrix((targetWidth - 2 * borderWidth) / (middleWidth), 0, 0, 1);
 		mx.translate(borderWidth, 0);
+		resultBitmapData.draw(middleBitmapData, mx);
+		return resultBitmapData;
+	}
+	
+	public static function verticalStretchCenter(bitmapData:BitmapData, borderHeight:Int, targetHeight:Int):BitmapData {
+		// Vertically partitions a BitmapData into "center" and "border" sections, and stretches only the
+		// border section.
+		// See `horizontalStretchCenter` for more details.
+		var resultBitmapData:BitmapData = new BitmapData(bitmapData.width, targetHeight, true, 0);
+		
+		var middleHeight:Int = bitmapData.height - 2 * borderHeight;
+		
+		var middleBitmapData:BitmapData = new BitmapData(bitmapData.width, middleHeight);
+		middleBitmapData.copyPixels(bitmapData, new Rectangle(0, borderHeight, bitmapData.width, middleHeight), new Point(0, 0));
+		
+		resultBitmapData.copyPixels(bitmapData, new Rectangle(0, 0, bitmapData.width, borderHeight), new Point(0, 0));
+		resultBitmapData.copyPixels(bitmapData, new Rectangle(0, borderHeight + middleHeight, bitmapData.width, borderHeight),
+		                            new Point(0, targetHeight - borderHeight));
+		
+		var mx:Matrix = new Matrix(1, 0, 0, (targetHeight - 2 * borderHeight) / (middleHeight));
+		mx.translate(0, borderHeight);
 		resultBitmapData.draw(middleBitmapData, mx);
 		return resultBitmapData;
 	}

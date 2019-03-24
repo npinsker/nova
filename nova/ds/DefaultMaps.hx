@@ -68,8 +68,12 @@ class DefaultStringMap<V> implements IMap<String, V> {
 		if (_map.exists(key)) {
 			return _map.get(key);
 		}
+		#if desktop
+		var toReturn:V = defaultConstructor();
+		#else
 		var toReturn:V = null;
 		if (defaultConstructor != null) toReturn = defaultConstructor();
+		#end
 		_map.set(key, toReturn);
 		return toReturn;
 	}

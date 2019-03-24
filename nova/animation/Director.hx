@@ -1,6 +1,7 @@
 package nova.animation;
 import flash.display.Sprite;
 import flixel.FlxSprite;
+import flixel.util.typeLimit.OneOfThree;
 import flixel.util.typeLimit.OneOfTwo;
 import haxe.ds.Either;
 import nova.utils.Pair;
@@ -47,13 +48,15 @@ class Actor {
 	public var sprite:FlxSprite;
 	public var action:Action;
 	public var callback:FlxSprite -> Void;
+	public var isDone:Void -> Bool;
 	
 	public var prevSets:Array<Actor>;
 	public var nextSets:Array<Actor>;
 	
-	public function new(sprite:FlxSprite, action:Action) {
+	public function new(sprite:FlxSprite, action:Action, isDoneA:Actor -> Bool) {
 		this.sprite = sprite;
 		this.action = action;
+		this.isDone = function() { return isDoneA(this); };
 		
 		prevSets = new Array<Actor>();
 		nextSets = new Array<Actor>();
@@ -111,8 +114,8 @@ class Director {
 	private static function _moveToAction(point:Pair<Int>, frames:Int):Action {
 		return new Action(function(sprite:FlxSprite, object:Dynamic) { object.x = sprite.x; object.y = sprite.y; },
 		                  function(sprite:FlxSprite, frame:Int, object:Dynamic):Void {
-							  sprite.x = sprite.x + (1.0 / frames) * (point.x - object.x);
-							  sprite.y = sprite.y + (1.0 / frames) * (point.y - object.y);
+							  sprite.x += (1.0 / frames) * (point.x - object.x);
+							  sprite.y += (1.0 / frames) * (point.y - object.y);
 						  },
 						  frames);
 	}
@@ -122,6 +125,32 @@ class Director {
 		                  function(sprite:FlxSprite, frame:Int, object:Dynamic):Void {
 							  sprite.x += (1.0 / frames) * object.point[0];
 							  sprite.y += (1.0 / frames) * object.point[1];
+						  },
+						  frames);
+	}
+	
+	private static function _bobAction(point:Pair<Int>, reps:Int, frames:Int):Action {
+		return new Action(function(sprite:FlxSprite, object:Dynamic) {
+							  object.x = sprite.x; object.y = sprite.y; object.point = point; object.reps = reps;
+						  },
+		                  function(sprite:FlxSprite, frame:Int, object:Dynamic):Void {
+							  if (frame == frames) {
+								  sprite.x = object.x;
+								  sprite.y = object.y;
+								  return;
+							  }
+							  
+							  var pct:Float = frame / frames * reps;
+							  pct -= Math.ffloor(pct);
+							  if (pct < 0.25) {
+								  pct = 4 * pct;
+							  } else if (pct < 0.75) {
+								  pct = 1.0 - 4.0 * (pct - 0.25);
+							  } else {
+								  pct = -1.0 + 4.0 * (pct - 0.75);
+							  }
+							  sprite.x = object.x + object.point[0] * pct;
+							  sprite.y = object.y + object.point[1] * pct;
 						  },
 						  frames);
 	}
@@ -137,44 +166,53 @@ class Director {
 						  frames);
 	}
 	
-	public static function directorChainableFn(action:Action, sprite:OneOfTwo<FlxSprite, Actor>, frames:Int, tag:String):Actor {
-		if (Std.is(sprite, FlxSprite)) {
-			var a:Actor = new Actor(cast(sprite, FlxSprite), action);
+	public static function getID() {
+		return instance.nextID++;
+	}
+	
+	public static function directorChainableFn(action:Action, sprite:OneOfTwo<FlxSprite, Actor>, tag:String):Actor {
+		if (Std.is(sprite, FlxSprite) || sprite == null) {
+			var a:Actor = new Actor((sprite != null ? cast(sprite, FlxSprite) : null), action, function(a:Actor) { return a.currentFrame == a.action.length; });
 			a._id = instance.nextID++;
 			a.tag = tag;
 			if (action.initFn != null) {
-				action.init(cast(sprite, FlxSprite));
+				action.init((sprite != null ? cast(sprite, FlxSprite) : null));
 			}
 			instance._liveActors.push(a);
 			return a;
 		}
 
 		var prevActor = cast(sprite, Actor);
-		if (prevActor.action == null) {
+		if (prevActor.action == null && prevActor.callback == null) {
 			prevActor.action = action;
+			prevActor.isDone = function() { return prevActor.currentFrame == prevActor.action.length; };
 			return prevActor;
 		}
-		var a:Actor = new Actor(prevActor.sprite, action);
-		a._id = instance.nextID++;
+		var a:Actor = new Actor(prevActor.sprite, action, function(a:Actor) { return a.currentFrame == a.action.length; });
+		a._id = getID();
 		a.tag = tag;
 		a.dependOn(prevActor);
 		return a;
 	}
 	
 	public static function fadeIn(sprite:OneOfTwo<FlxSprite, Actor>, frames:Int, tag:String = null):Actor {
-		return directorChainableFn(_fadeInAction(frames), sprite, frames, tag);
+		return directorChainableFn(_fadeInAction(frames), sprite, tag);
 	}
 	
 	public static function fadeOut(sprite:OneOfTwo<FlxSprite, Actor>, frames:Int, tag:String = null):Actor {
-		return directorChainableFn(_fadeOutAction(frames), sprite, frames, tag);
+		return directorChainableFn(_fadeOutAction(frames), sprite, tag);
 	}
 	
 	public static function moveTo(sprite:OneOfTwo<FlxSprite, Actor>, point:Pair<Int>, frames:Int, tag:String = null):Actor {
-		return directorChainableFn(_moveToAction(point, frames), sprite, frames, tag);
+		return directorChainableFn(_moveToAction(point, frames), sprite, tag);
 	}
 	
 	public static function moveBy(sprite:OneOfTwo<FlxSprite, Actor>, point:Pair<Int>, frames:Int, tag:String = null):Actor {
-		return directorChainableFn(_moveByAction(point, frames), sprite, frames, tag);
+		return directorChainableFn(_moveByAction(point, frames), sprite, tag);
+	}
+	
+	public static function bob(sprite:OneOfTwo<FlxSprite, Actor>, point:Pair<Int>, reps:Int, frames:Int, tag:String = null):Actor {
+		return directorChainableFn(_bobAction(point, reps, frames), sprite, tag);
 	}
 	
 	public static function jumpInArc(sprite:OneOfTwo<FlxSprite, Actor>, verticalDist:Int, frames:Int, tag:String = null):Actor {
@@ -184,11 +222,15 @@ class Director {
 		} else {
 			startPoint = [Std.int(cast(sprite, Actor).sprite.x), Std.int(cast(sprite, Actor).sprite.y)];
 		}
-		return directorChainableFn(_jumpInArcAction(verticalDist, frames), sprite, frames, tag);
+		return directorChainableFn(_jumpInArcAction(verticalDist, frames), sprite, tag);
 	}
 	
-	public static function wait(sprite:OneOfTwo<FlxSprite, Actor>, frames:Int, tag:String):Actor {
-		return directorChainableFn(_noopAction(frames), sprite, frames, tag);
+	public static function wait(sprite:OneOfThree<FlxSprite, Actor, Int>, frames:Int = null, tag:String = null):Actor {
+		if (frames == null) {
+			return directorChainableFn(_noopAction(cast(sprite, Int)), null, tag);
+		}
+		var ootSprite:OneOfTwo<FlxSprite, Actor> = (Std.is(sprite, FlxSprite) ? cast(sprite, FlxSprite) : cast(sprite, Actor));
+		return directorChainableFn(_noopAction(frames), ootSprite, tag);
 	}
 	
 	public static function call(actor:Actor, callback:FlxSprite -> Void):Actor {
@@ -197,14 +239,14 @@ class Director {
 	}
 	
 	public static function then(prevActor:Actor, newActor:FlxSprite):Actor {
-		var a:Actor = new Actor(newActor, null);
+		var a:Actor = new Actor(newActor, null, null);
 		a._id = instance.nextID++;
 		a.dependOn(prevActor);
 		return a;
 	}
 	
 	public static function afterAll(sprite:FlxSprite, prevActors:Array<Actor>):Actor {
-		var a:Actor = new Actor(sprite, null);
+		var a:Actor = new Actor(sprite, null, null);
 		a._id = instance.nextID++;
 		for (prevActor in prevActors) {
 			a.dependOn(prevActor);
@@ -245,7 +287,10 @@ class Director {
 				liveActor.action.update(liveActor.sprite, liveActor.currentFrame);
 			}
 			
-			if (liveActor.action == null || liveActor.currentFrame == liveActor.action.length) {
+			if (liveActor.action == null || (liveActor.isDone != null && liveActor.isDone())) {
+				if (liveActor.callback != null) {
+					liveActor.callback(liveActor.sprite);
+				}
 				for (nextActor in liveActor.nextSets) {
 					nextActor.prevSets.remove(liveActor);
 					if (nextActor.prevSets.length == 0) {
@@ -259,9 +304,6 @@ class Director {
 							instance._liveActors.push(nextActor);
 						}
 					}
-				}
-				if (liveActor.callback != null) {
-					liveActor.callback(liveActor.sprite);
 				}
 				instance._liveActors.splice(i, 1);
 			}

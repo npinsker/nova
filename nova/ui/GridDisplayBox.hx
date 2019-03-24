@@ -29,6 +29,8 @@ class GridDisplayBox extends FlxLocalSprite {
 	public var checked:LocalSpriteWrapper;
 	public var checkedVisible:Bool = false;
 	public var options:Dynamic;
+	public var selectedColor:Int;
+	public static var DEFAULT_SELECTED_COLOR:Int = 0x72AAEA;
 	
 	public function new(bitmapData:BitmapData, item:Dynamic, options:Dynamic) {
 		super();
@@ -37,6 +39,7 @@ class GridDisplayBox extends FlxLocalSprite {
 		
 		width = (options.prop('width') != null ? options.prop('width') : 48);
 		height = (options.prop('height') != null ? options.prop('height') : 48);
+		selectedColor = (options.prop('selectedColor') != null ? options.prop('selectedColor') : DEFAULT_SELECTED_COLOR);
 		
 		bg = new LocalSpriteWrapper(new FlxSprite());
 		if (Reflect.hasField(options, 'bgBitmapData')) {
@@ -67,9 +70,9 @@ class GridDisplayBox extends FlxLocalSprite {
 		var nbg:BitmapData = bgBitmapData.clone();
 		nbg.applyFilter(nbg, nbg.rect, new Point(0, 0), new ColorMatrixFilter(
 			[
-				0, 0, 0, 0, 114,
-				0, 0, 0, 0, 170,
-				0, 0, 0, 0, 234,
+				0, 0, 0, 0, Std.int(selectedColor / 256 / 256),
+				0, 0, 0, 0, Std.int(selectedColor / 256) % 256,
+				0, 0, 0, 0, selectedColor % 256,
 				0, 0, 0, 1, 255
 			]
 			));

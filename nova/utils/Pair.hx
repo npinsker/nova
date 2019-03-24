@@ -1,4 +1,5 @@
 package nova.utils;
+import flixel.math.FlxPoint;
 
 /**
  * Represents a pair of numbers, either Floats or Ints.
@@ -48,6 +49,11 @@ abstract Pair<K:Float>(Array<K>) {
 			return null;
 		}
 		return new Pair<Float>(a[0], a[1]);
+	}
+	
+	@:from
+	public static function fromFlxPoint(a:FlxPoint):Pair<Float> {
+		return new Pair<Float>(a.x, a.y);
 	}
 	
 	@:to

@@ -15,9 +15,11 @@ enum SyntaxNodeType {
 	LABEL;
 	VARIABLE_ASSIGN;
 	IF;
+	FUNCTION;
 	JUMP;
 	EMIT;
 	GLOBAL;
+	RETURN;
 	
 	EXPRESSION;
 }

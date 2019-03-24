@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	<meta title="NovaTests" version="1.0.0" />
+	<app file="TestAll" main="TestAll" />
+	
+	<set name="SWF_VERSION" value="11.8" />
+	<source path="src" />
+	
+	<set name="no-custom-backend" />
+	<set name="unit-test" />
+	
+	<haxelib name="flixel" />
+	<haxelib name="nova" />
+	
+	<haxedef name="FLX_RECORD" />
+</project>

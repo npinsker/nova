@@ -59,7 +59,7 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	
 	public var abort:Bool = false;  // Whether the user can leave the dialog at any point.
 	public var skip:Bool = true;  // Whether the user can press the 'Advance' key to display all text in the pane.
-	public var destroyed:Bool = false;
+	public var finished:Bool = false;
 	
 	public var labelMap:Map<String, Int>;
 	
@@ -106,7 +106,8 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	public var speakerOffset:Pair<Int> = [0, 0];
 	public var textOffset:Pair<Int> = [0, 0];
 	
-	public var callback:Void -> Void = null;
+	public var textPreprocess:DialogBox -> String -> String = null;
+	public var callback:?String -> Void = null;
 	public var boxCallback:Void -> Void = null;
 	public var emitCallback:String -> Void = null;
 	public var boxCallbackStr:String = null;
@@ -114,7 +115,7 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	
 	public var options:Dynamic;
 	public var optionsTween:FlxTween;
-	public var selectOptionSprite:BitmapData = null;
+	public var selectOptionSprite:Dynamic = null;
 	public var optionsOffset:Pair<Int> = [0, 0];
 
 	public var speakerBoxTop:Float;
@@ -129,8 +130,28 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	private static function _typeOutAction(text:String, frames:Int):Action {
 		return new Action(function(sprite:FlxSprite, object:Dynamic) { object.text = text; cast(sprite, FlxText).text = ""; },
 		                  function(sprite:FlxSprite, frame:Int, object:Dynamic):Void {
-							  var substringLength:Int = Std.int(new UTF8String(object.text).length * frame / frames);
-							  cast(sprite, FlxText).text = new UTF8String(object.text).substring(0, substringLength);
+							  var textSprite:FlxText = cast(sprite, FlxText);
+							  var utf8Text:UTF8String = new UTF8String(object.text);
+							  var prevLength:Int = Std.int(utf8Text.length * (frame - 1) / frames);
+							  var newLength:Int = Std.int(utf8Text.length * frame / frames);
+							  var newSubstring:String = utf8Text.substring(prevLength, newLength);
+							  var firstSpace:Int = newSubstring.indexOf(' ');
+							  if (firstSpace != -1) {
+								  textSprite.text = utf8Text.substring(0, newLength);
+								  var lastSpace:Int = prevLength + newSubstring.lastIndexOf(' ');
+								  var nextSpace:Int = utf8Text.indexOf(' ', lastSpace + 1);
+								  var lines:Int = textSprite.textField.numLines;
+								  
+								  textSprite.text = utf8Text.substring(0, nextSpace);
+								  if (textSprite.textField.numLines > lines) {
+									  textSprite.text = utf8Text.substring(0, prevLength + firstSpace) + '\n' +
+									                    utf8Text.substring(prevLength + firstSpace + 1, newLength);
+								  } else {
+									  textSprite.text = utf8Text.substring(0, newLength);
+								  }
+							  } else {
+								textSprite.text = utf8Text.substring(0, newLength);
+							  }
 						  },
 						  frames);
 	}
@@ -168,11 +189,11 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	}
 	
 	public static function typeOut(sprite:OneOfTwo<FlxText, Actor>, text:String, frames:Int):Actor {
-		return Director.directorChainableFn(_typeOutAction(text, frames), cast(sprite, FlxSprite), frames, DIRECTOR_DIALOG_TRANSITION_STR);
+		return Director.directorChainableFn(_typeOutAction(text, frames), cast(sprite, FlxSprite), DIRECTOR_DIALOG_TRANSITION_STR);
 	}
 	
 	public static function slideIn(sprite:OneOfTwo<FlxSprite, Actor>, startOffset:String, frames:Int):Actor {
-		return Director.directorChainableFn(_slideInAction(startOffset, frames), cast(sprite, FlxSprite), frames, DIRECTOR_SLIDEIN_TRANSITION_STR);
+		return Director.directorChainableFn(_slideInAction(startOffset, frames), cast(sprite, FlxSprite), DIRECTOR_SLIDEIN_TRANSITION_STR);
 	}
 	
 	public function new(messages:DialogNodeSequence, options:Dynamic) {
@@ -207,7 +228,7 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		
 		for (supportedField in ['abort', 'align', 'skip', 'advanceStyle', 'advanceLength',
 		                        'advanceSound', 'callback', 'abortCallback', 'emitCallback',
-								'selectOptionSprite', 'globalVariables', 'speakerSpriteMap']) {
+								'selectOptionSprite', 'globalVariables', 'speakerSpriteMap', 'textPreprocess', 'textPadding']) {
 			if (Reflect.hasField(options, supportedField)) {
 				Reflect.setField(this, supportedField, Reflect.field(options, supportedField));
 			}
@@ -293,6 +314,10 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 			add(advanceIndicatorSprite);
 		}
 		
+		if (Reflect.hasField(options, 'beforeMount')) {
+			options.beforeMount(this);
+		}
+		
 		text = new LocalWrapper<FlxText>(new FlxText());
 		add(text);
 		setTextFormat(text._sprite, options.textFormat);
@@ -300,6 +325,15 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		if (messages != null) {
 			if (pointer.get().type != TEXT && pointer.get().type != CHOICE_BOX) {
 				advanceUntilBlocked(false);
+			}
+			if (pointer.get().type == RETURN) {
+				if (this.callback != null) {
+					this.callback(pointer.get().value);
+				} else {
+					trace("Warning: called RETURN statement without any callback function!");
+				}
+				finished = true;
+				return;
 			}
 			renderText(parseDialogNode());
 		}
@@ -358,7 +392,7 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 			}
 			steppedFirst = true;
 			var node:DialogSyntaxNode = pointer.get();
-			if (node == null || node.type == TEXT || node.type == CHOICE_BOX) {
+			if (node == null || node.type == TEXT || node.type == CHOICE_BOX || node.type == RETURN || node.type == FUNCTION) {
 				return;
 			} else if (node.type == JUMP) {
 				var label:String = node.value;
@@ -429,11 +463,17 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 
 		if (Std.is(message, String)) {
 			nextTextStr = message;
+			if (textPreprocess != null) {
+				nextTextStr = textPreprocess(this, nextTextStr);
+			}
 		} else {
 			if (Reflect.hasField(message, 'text')) {
 				nextTextStr = message.text;
 			} else {
 				nextTextStr = '';
+			}
+			if (textPreprocess != null) {
+				nextTextStr = textPreprocess(this, nextTextStr);
 			}
 			nextSpeaker = message.speaker;
 			if (nextSpeaker == null) nextSpeaker = '';
@@ -448,18 +488,14 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 				choices = [for (i in cast(message.choices, Array<Dynamic>)) i[0]];
 				choiceIndex = 0;
 				mode = DialogBoxMode.SELECT_OPTION;
-				var choiceTextStr = this.choices.join('\n');
 				var strIndex = 0;
-				var choiceText:FlxText = new FlxText(0, 0, 0, choiceTextStr);
-				setTextFormat(choiceText, StructureUtils.merge(options.choiceTextFormat, {size: 4}));
-				
-				for (i in 0...choices.length) {
-					var len = choices[i].length;
-					if (choicesTaken.indexOf(message.choices[i][1]) != -1) {
-						choiceText.addFormat(new FlxTextFormat(FlxColor.GRAY), strIndex, strIndex + len);
-					}
-					strIndex += len + 1;
+				var choiceText:FlxText = new FlxText(0, 0, 0);
+				if (Reflect.hasField(options, 'choiceTextFormat')) {
+					setTextFormat(choiceText, StructureUtils.merge(options.choiceTextFormat, {size: 5}));
+				} else {
+					setTextFormat(choiceText, StructureUtils.merge(options.textFormat, {size: 5}));
 				}
+				
 				choiceSprite = new LocalWrapper(choiceText);
 				add(choiceSprite);
 
@@ -474,30 +510,40 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 			} else {
 				mode = DialogBoxMode.NORMAL;
 				nextTextStr = message.text;
+				if (textPreprocess != null) {
+					nextTextStr = textPreprocess(this, nextTextStr);
+				}
 			}
 		}
 		if (nextSpeaker != currentSpeaker && dialogSpeakerSprite != null) {
 			//remove
 		}
 		
-		var textX:Int = textPadding.x;
+		var textX:Int = textPadding.x + (Reflect.hasField(options, 'textOffset') ? options.textOffset[0] : 0);
+		if (speakerImage != null) {
+			remove(speakerImage);
+			speakerImage = null;
+		}
+		
 		if (nextSpeaker != "") {
-			dialogSpeakerSprite.visible = true;
-			speakerText = new LocalWrapper<FlxText>(new FlxText(0, 0, 0, nextSpeaker));
-			setTextFormat(speakerText._sprite, options.textFormat);
-			speakerText.x = 5 * globalScale + speakerOffset.x + textOffset.x + speakerPadding;
-			speakerText.y = speakerBoxTop + this.dialogSpeakerSprite.height - speakerText.height - 4 * globalScale + textOffset.y;
-			speakerText.width = speakerText._sprite.width;
-			var speakerBitmapData:BitmapData = BitmapDataUtils.loadFromObject(speakerBackground);
-			dialogSpeakerSprite._sprite.loadGraphic(BitmapDataUtils.horizontalStretchCenter(speakerBitmapData,
-			                                                                        speakerPadding,
-			                                                                        Std.int(speakerText.width) + 2 * speakerPadding));
-			add(speakerText);
-			
-			if (speakerImage != null) {
-				remove(speakerImage);
-				speakerImage = null;
-			}
+      if (Reflect.hasField(options, 'speakerBackground')) {
+        if (dialogSpeakerSprite != null) {
+          dialogSpeakerSprite.visible = true;
+        }
+        speakerText = new LocalWrapper<FlxText>(new FlxText(0, 0, 0, nextSpeaker));
+        setTextFormat(speakerText._sprite, options.textFormat);
+        speakerText.x = 5 * globalScale + speakerOffset.x + textOffset.x + speakerPadding;
+        speakerText.y = speakerBoxTop + this.dialogSpeakerSprite.height - speakerText.height - 4 * globalScale + textOffset.y;
+        speakerText.width = speakerText._sprite.width;
+        if (speakerBackground != null) {
+          var speakerBitmapData:BitmapData = BitmapDataUtils.loadFromObject(speakerBackground);
+          dialogSpeakerSprite._sprite.loadGraphic(BitmapDataUtils.horizontalStretchCenter(speakerBitmapData,
+                                              speakerPadding,
+                                              Std.int(speakerText.width) + 2 * speakerPadding));
+        }
+        add(speakerText);
+      }
+
 			if (speakerSpriteMap != null && speakerSprite != null && speakerSpriteMap.exists(nextSpeaker)) {
 				if (Std.is(speakerSpriteMap.get(nextSpeaker), Array)) {
 					var loc:Pair<Int> = speakerSpriteMap.get(nextSpeaker);
@@ -518,8 +564,8 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 			}
 			if (speakerImage != null) {
 				add(speakerImage);
-				speakerImage.y = (bgSprite.height - speakerImage.height) / 2;
-				speakerImage.x = textPadding.x;
+				speakerImage.y = (bgSprite.height - speakerImage.height) / 2 + (Reflect.hasField(speakerSpriteData, 'offset') ? speakerSpriteData.offset[1] : 0);
+				speakerImage.x = textPadding.x + (Reflect.hasField(speakerSpriteData, 'offset') ? speakerSpriteData.offset[0] : 0);
 				textX += textPadding.x + Std.int(speakerImage.width);
 				if (lastSpeaker != nextSpeaker && Reflect.hasField(speakerSpriteData, 'transitionIn')) {
 					speakerSpriteData.transitionIn(speakerImage);
@@ -527,12 +573,13 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 			}
 			lastSpeaker = nextSpeaker;
 		} else {
-			dialogSpeakerSprite.visible = false;
+			if (dialogSpeakerSprite != null) {
+        dialogSpeakerSprite.visible = false;
+      }
 		}
 		/*if (index > 0 && advanceSound != null) {
 			FlxG.sound.load(advanceSound).play();
 		}*/
-		
 		if (this.advanceStyle == DialogAdvanceStyle.NONE) {
 			remove(text);
 			text.destroy();
@@ -541,14 +588,14 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 											    nextTextStr));
 			setTextFormat(text._sprite, options.textFormat);
 			text.x = textX;
-			text.y = textPadding.y;
+			text.y = textPadding.y + (Reflect.hasField(options, 'textOffset') ? options.textOffset[1] : 0);
 			text._sprite.fieldWidth = bgSprite.width - textPadding.x - text.x;
 			if (choiceSprite != null) {
 				choiceSprite.x = textX + choiceIndicator.width + globalScale * optionsOffset.x;
 				if (nextTextStr.length > 0) {
 					choiceSprite.y = text.y + text._sprite.textField.getLineMetrics(0).height + 5 + globalScale * optionsOffset.y;
 				} else {
-					choiceSprite.y = text.y;
+					choiceSprite.y = text.y + globalScale * optionsOffset.y;
 				}
 				redrawOptions();
 			}
@@ -580,15 +627,19 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		} else if (this.advanceStyle == DialogAdvanceStyle.TYPEWRITER) {
 			advancing = true;
 			if (advanceIndicatorSprite != null) advanceIndicatorSprite.visible = false;
-			text.x = textX;
-			text.y = textPadding.y;
-			text._sprite.fieldWidth = bgSprite.width - textPadding.x - text.x;
+			remove(text);
+			text.destroy();
+			text = new LocalWrapper(new FlxText(textX, textPadding.y,
+											    bgSprite.width - textX - textPadding.x,
+											    nextTextStr));
+			add(text);
+			setTextFormat(text._sprite, options.textFormat);
 			if (choiceSprite != null) {
 				choiceSprite.x = textX + choiceIndicator.width + globalScale * optionsOffset.x;
 				if (nextTextStr.length > 0) {
 					choiceSprite.y = text.y + text._sprite.textField.getLineMetrics(0).height + 5 + globalScale * optionsOffset.y;
 				} else {
-					choiceSprite.y = text.y;
+					choiceSprite.y = text.y + globalScale * optionsOffset.y;
 				}
 				choiceSprite.visible = false;
 				choiceIndicator.visible = false;
@@ -608,20 +659,49 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	
 	public function advanceAndRender() {
 		advanceUntilBlocked();
-					
+			
 		if (pointer.get() != null) {
+			if (pointer.get().type == RETURN) {
+				if (this.callback != null) {
+					this.callback(pointer.get().value);
+				} else {
+					trace("Warning: called RETURN statement without any callback function!");
+				}
+				finished = true;
+				return;
+			} else if (pointer.get().type == FUNCTION) {
+				pointer.get().value(this);
+				return;
+			}
 			renderText(parseDialogNode());
 		} else {
 			if (this.callback != null && boxCallbackStr == null) {
 				this.callback();
 			}
-			this.destroy();
+			finished = true;
 		}
 	}
 	
 	public function redrawOptions() {
+		var choiceTextStr = this.choices.join('\n');
+		var lineHeight = choiceSprite._sprite.textField.getLineMetrics(0).height;
+		var anchor:Int = 0;
+		if (choices.length * lineHeight > bgSprite.height - 2 * textPadding.y) {
+			anchor = choiceIndex - 1;
+			if (anchor < 0) anchor = 0;
+			if (anchor > choices.length - 4) anchor = choices.length - 4;
+			choiceTextStr = [for (i in anchor...anchor + 4) choices[i]].join('\n');
+		}
+		choiceSprite._sprite.text = choiceTextStr;
+		/*for (i in 0...choices.length) {
+			var len = choices[i].length;
+			if (choicesTaken.indexOf(message.choices[i][1]) != -1) {
+				choiceSprite._sprite.addFormat(new FlxTextFormat(FlxColor.GRAY), strIndex, strIndex + len);
+			}
+			strIndex += len + 1;
+		}*/
 		choiceIndicator.x = choiceSprite.x - choiceIndicator.width - 5;
-		choiceIndicator.y = choiceSprite.y + choiceIndex * choiceSprite._sprite.textField.getLineMetrics(0).height;
+		choiceIndicator.y = choiceSprite.y + (choiceIndex - anchor) * choiceSprite._sprite.textField.getLineMetrics(0).height;
 	}
 	
 	public function handleInput():Void {
@@ -630,8 +710,9 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		if (advance) {
 			InputController.consume(Button.CONFIRM);
 		}
+		
 		if (this.mode == DialogBoxMode.NORMAL) {
-			if (advance && canAdvance && this.visible) {
+			if (advance && canAdvance) {
 				if (!advancing) {
 					advanceAndRender();
 				} else if (skip) {
@@ -672,7 +753,7 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 					if (this.callback != null && boxCallbackStr == null) {
 						this.callback();
 					}
-					this.destroy();
+					finished = true;
 				} else {
 					trace("No label " + jumpToLabel + " found!");
 					advanceAndRender();
@@ -704,11 +785,6 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 				this.bottomImageStore = null;
 			}
 		}
-	}
-	
-	override public function destroy():Void {
-		destroyed = true;
-		super.destroy();
 	}
 	
 	function setTextFormat(text:FlxText, format:Dynamic) {

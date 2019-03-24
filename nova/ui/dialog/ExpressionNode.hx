@@ -10,11 +10,13 @@ using nova.utils.ArrayUtils;
 
 enum ExpressionNodeType {
 	VARIABLE;
+	FUNCTION;
 	
-	ARITHMETIC;
+	ARITHMETIC_NODE;
 	
 	STRING;
 	INTEGER;
+	FLOAT;
 	
 	AND;
 	OR;
@@ -46,55 +48,79 @@ class ExpressionNode {
 			return this;
 		}
 		if (type == VARIABLE) {
-			if (variableMap.exists(value)) {
-				if (Std.is(variableMap.get(value), Int)) {
-					return new ExpressionNode(INTEGER, variableMap.get(value));
-				} else if (Std.is(variableMap.get(value), String)) {
-					return new ExpressionNode(STRING, variableMap.get(value));
-				} else {
-					trace("Unknown type for variable " + value + " (value " + variableMap.get(value) + ")");
-					return null;
-				}
-			} else {
+			if (!variableMap.exists(value)) {
 				//trace("Variable " + value + " -- not found in variableMap! (defaulting to FALSE)");
 				return FALSE;
 			}
+			if (Std.is(variableMap.get(value), Int)) {
+				return new ExpressionNode(INTEGER, variableMap.get(value));
+			} else if (Std.is(variableMap.get(value), Float)) {
+				return new ExpressionNode(FLOAT, variableMap.get(value));
+			} else if (Std.is(variableMap.get(value), String)) {
+				return new ExpressionNode(STRING, variableMap.get(value));
+			}
+			trace("Unknown type for variable " + value + " (value " + variableMap.get(value) + ")");
+			return null;
 		}
-		if (type == ARITHMETIC) {
+		if (type == FUNCTION) {
+			if (!variableMap.exists(value)) {
+				trace("Function " + value + " -- not found in variableMap! (defaulting to FALSE)");
+				return FALSE;
+			}
+			var fn = variableMap.get(value);
+			var result = fn(leftChild.evaluate(variableMap).value);
+			if (Std.is(result, Int)) {
+				return new ExpressionNode(INTEGER, cast(result, Int));
+			} else if (Std.is(result, Float)) {
+				return new ExpressionNode(FLOAT, cast(result, Float));
+			} else if (Std.is(result, Bool)) {
+				return new ExpressionNode(INTEGER, (cast(result, Bool) ? 1 : 0));
+			} else if (Std.is(result, String)) {
+				return new ExpressionNode(STRING, cast(result, String));
+			}
+			trace("Unknown function result for function with name " + value + " (value " + result + ")");
+			return null;
+		}
+		if (type == ARITHMETIC_NODE) {
 			if (leftChild == null || rightChild == null) {
-				trace("Attempt to evaluate ARITHMETIC op with a null child!");
+				trace("Attempt to evaluate ARITHMETIC_NODE op with a null child!");
 				return null;
 			}
 			var leftResult:ExpressionNode = leftChild.evaluate(variableMap);
 			var rightResult:ExpressionNode = rightChild.evaluate(variableMap);
 			
-			if (leftResult.type != INTEGER || rightResult.type != INTEGER) {
-				trace("Attempt to evaluate ARITHMETIC op with a non-integer!");
+			if ((leftResult.type != INTEGER && leftResult.type != FLOAT) ||
+			    (rightResult.type != INTEGER && rightResult.type != FLOAT)) {
+				trace("Attempt to evaluate ARITHMETIC_NODE op with non-numbers!");
 				return null;
 			}
+			var resultType = (leftResult.type == FLOAT || rightResult.type == FLOAT ? FLOAT : INTEGER);
 			
 			if (value == '+') {
-				return new ExpressionNode(INTEGER, leftResult.value + rightResult.value);
+				return new ExpressionNode(resultType, leftResult.value + rightResult.value);
 			} else if (value == '-') {
-				return new ExpressionNode(INTEGER, leftResult.value - rightResult.value);
+				return new ExpressionNode(resultType, leftResult.value - rightResult.value);
 			} else if (value == '*') {
-				return new ExpressionNode(INTEGER, leftResult.value * rightResult.value);
+				return new ExpressionNode(resultType, leftResult.value * rightResult.value);
 			} else if (value == '/') {
-				return new ExpressionNode(INTEGER, Std.int(leftResult.value / rightResult.value));
+				var result:Float = leftResult.value / rightResult.value;
+				return new ExpressionNode(resultType, (resultType == INTEGER ? Std.int(result) : result));
 			}
 			trace("Unknown op " + value);
 			return null;
 		}
-		if (type == EQUALS || type == LESS_THAN || type == GREATER_THAN || type == LESS_THAN_EQUALS || type == GREATER_THAN_EQUALS) {
+		if (type == EQUALS || type == LESS_THAN || type == GREATER_THAN ||
+        type == LESS_THAN_EQUALS || type == GREATER_THAN_EQUALS) {
 			if (leftChild == null || rightChild == null) {
-				trace("Attempt to evaluate ARITHMETIC op with a null child!");
+				trace("Attempt to evaluate comparison op with a null child!");
 				return null;
 			}
 			var leftResult:ExpressionNode = leftChild.evaluate(variableMap);
 			var rightResult:ExpressionNode = rightChild.evaluate(variableMap);
 			
 			if (leftResult.type != rightResult.type) {
-				trace("Warning: Attempt to evaluate type " + type + " on incompatible values " + leftResult + " and " + rightResult + ". (Returning FALSE)");
+				trace("Warning: Attempt to evaluate type " + type + " on incompatible values " +
+              leftResult + " and " + rightResult + ". (Returning FALSE)");
 				return FALSE;
 			}
 			

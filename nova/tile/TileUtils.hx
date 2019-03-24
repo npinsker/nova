@@ -26,9 +26,9 @@ class TileUtils {
 		var endY:Int = Math.ceil((rect.y + rect.height - offset.y) / tileDims.y + 0.01);
 		
 		if (startX < 0) startX = 0;
-		if (endX >= tiles[0].length) endX = tiles[0].length - 1;
+		if (endX >= tiles[0].length) endX = tiles[0].length;
 		if (startY < 0) startY = 0;
-		if (endY >= tiles.length) endY = tiles.length - 1;
+		if (endY >= tiles.length) endY = tiles.length;
 		
 		for (y in startY...endY) {
 			for (x in startX...endX) {
@@ -72,6 +72,103 @@ class TileUtils {
 			return [0, 0];
 		}
 		return [nudgeX, nudgeY];
+	}
+	public static function horizontalNudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect):Float {
+		var canNudgeLeft:Bool = true;
+		var canNudgeRight:Bool = true;
+		for (collisionRect in collisionRects) {
+			if (collisionRect.x + collisionRect.width > rect.x && collisionRect.y + collisionRect.height > rect.y &&
+			    rect.x + rect.width > collisionRect.x && rect.y + rect.height > collisionRect.y) {
+				var candidateLeft = rect.x + rect.width - collisionRect.x;
+				var candidateRight = collisionRect.x + collisionRect.width - rect.x;
+				
+				if (candidateLeft > 10) canNudgeLeft = false;
+				if (candidateRight > 10) canNudgeRight = false;
+			}
+		}
+		var maxAmt:Float = 100;
+		var minAmt:Float = 0;
+		if (canNudgeLeft && !canNudgeRight) {
+			for (collisionRect in collisionRects) {
+				if (collisionRect.y + collisionRect.height <= rect.y || rect.y + rect.height <= collisionRect.y) {
+					continue;
+				}
+				
+				if (rect.x > collisionRect.x + collisionRect.width) {
+					maxAmt = Math.min(maxAmt, rect.x - collisionRect.x - collisionRect.width);
+				} else if (rect.x + rect.width > collisionRect.x) {
+					minAmt = Math.max(minAmt, rect.x + rect.width - collisionRect.x);
+				}
+			}
+			if (minAmt <= maxAmt) {
+				return -minAmt;
+			}
+		} else if (canNudgeRight && !canNudgeLeft) {
+			for (collisionRect in collisionRects) {
+				if (collisionRect.y + collisionRect.height <= rect.y || rect.y + rect.height <= collisionRect.y) {
+					continue;
+				}
+				
+				if (rect.x + rect.width < collisionRect.x) {
+					maxAmt = Math.min(maxAmt, collisionRect.x - rect.x - rect.width);
+				} else if (rect.x < collisionRect.x + collisionRect.width) {
+					minAmt = Math.max(minAmt, collisionRect.x + collisionRect.width - rect.x);
+				}
+			}
+			if (minAmt <= maxAmt) {
+				return minAmt;
+			}
+		}
+		return 0;
+	}
+	
+	public static function verticalNudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect):Float {
+		var canNudgeUp:Bool = true;
+		var canNudgeDown:Bool = true;
+		for (collisionRect in collisionRects) {
+			if (collisionRect.x + collisionRect.width > rect.x && collisionRect.y + collisionRect.height > rect.y &&
+			    rect.x + rect.width > collisionRect.x && rect.y + rect.height > collisionRect.y) {
+				var candidateUp = rect.y + rect.height - collisionRect.y;
+				var candidateDown = collisionRect.y + collisionRect.height - rect.y;
+				
+				if (candidateUp > 10) canNudgeUp = false;
+				if (candidateDown > 10) canNudgeDown = false;
+			}
+		}
+		var maxAmt:Float = 100;
+		var minAmt:Float = 0;
+		if (canNudgeUp && !canNudgeDown) {
+			for (collisionRect in collisionRects) {
+				if (collisionRect.x + collisionRect.width <= rect.x || rect.x + rect.width <= collisionRect.x) {
+					continue;
+				}
+				
+				if (rect.y > collisionRect.y + collisionRect.height) {
+					maxAmt = Math.min(maxAmt, rect.y - collisionRect.y - collisionRect.height);
+				} else if (rect.y + rect.height > collisionRect.y) {
+					minAmt = Math.max(minAmt, rect.y + rect.height - collisionRect.y);
+				}
+			}
+			if (minAmt <= maxAmt) {
+				return -minAmt;
+			}
+		} else if (canNudgeDown && !canNudgeUp) {
+			for (collisionRect in collisionRects) {
+				if (collisionRect.x + collisionRect.width <= rect.x || rect.x + rect.width <= collisionRect.x) {
+					continue;
+				}
+				
+				if (rect.y + rect.height < collisionRect.y) {
+					maxAmt = Math.min(maxAmt, collisionRect.y - rect.y - rect.height);
+				} else if (rect.y < collisionRect.y + collisionRect.height) {
+					minAmt = Math.max(minAmt, collisionRect.y + collisionRect.height - rect.y);
+				}
+			}
+			if (minAmt <= maxAmt) {
+				return minAmt;
+			}
+		}
+		return 0;
 	}
 	
 	public static function nudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect):Pair<Float> {

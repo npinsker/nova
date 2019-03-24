@@ -31,7 +31,7 @@ Good for things like "if a bunch of enemies are moving, end their turn after the
 
 ## DialogBox
 
-A powerful, highly customizable dialog box for use in just about any game. Supports dynamic resizing, text effects, portraits, and more.
+A powerful, highly customizable dialog box for use in just about any game. Supports dynamic resizing, text effects, portraits, arbitrary callbacks, and more.
 
 ## FlxLocalSprite
 
@@ -44,5 +44,9 @@ parent.add(child);
 ```
 
 then ```child``` will appear at the position (40, 40). If ```parent``` moves, then ```child``` will move by the same amount.
+
+## NovaEmitter
+
+A simple, FlxSprite-based emitter where each pixel can be arbitrarily programmed.
 
 (More detailed documentation to come!)

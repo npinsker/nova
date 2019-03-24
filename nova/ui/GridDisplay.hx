@@ -33,6 +33,9 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 	public var grid:Array<Array<GridDisplayBox>>;
 	public var inventory:Array<Dynamic>;
 	public var columns:Int;
+	public var fixedFocus:Array<Int>;
+	public var X_MULT:Int = 16700;
+	public var options:Dynamic;
 	
 	public var focus:Pair<Int> = [0, 0];
 	
@@ -41,10 +44,37 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 		grid = new Array<Array<GridDisplayBox>>();
 		this.inventory = inventory.copy();
 		this.columns = (Reflect.hasField(options, 'columns') ? options.columns : NUM_COLUMNS);
+		this.fixedFocus = new Array<Int>();
+		this.options = options;
+		
+		rebuildGrid();
+	}
+	
+	public var selected(get, null):GridDisplayBox;
+	@:noCompletion
+	public function get_selected():GridDisplayBox {
+		return grid[focus.y][focus.x];
+	}
+	
+	public var selectedCoords(get, null):Pair<Int>;
+	@:noCompletion
+	public function get_selectedCoords():Pair<Int> {
+		return [focus.x, focus.y];
+	}
+	
+	public function rebuildGrid() {
 		var numSlots = inventory.length;
 		if (NUM_COLUMNS * MIN_ROWS > numSlots) {
 			numSlots = NUM_COLUMNS * MIN_ROWS;
 		}
+		
+		for (row in grid) {
+			for (gridBox in row) {
+				remove(gridBox);
+			}
+		}
+		grid.splice(0, grid.length);
+		
 		for (i in 0...numSlots) {
 			if (i % NUM_COLUMNS == 0) {
 				grid.push(new Array<GridDisplayBox>());
@@ -55,8 +85,8 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 			}
 			var gdb = new GridDisplayBox(bd, inventory[i], options);
 			add(gdb);
-			gdb.x = (gdb.width + 4 * Tile.TILE_SCALE) * (i % NUM_COLUMNS);
-			gdb.y = (gdb.height + 4 * Tile.TILE_SCALE) * Std.int(i / NUM_COLUMNS);
+			gdb.x = (gdb.width + 3 * Tile.TILE_SCALE) * (i % NUM_COLUMNS);
+			gdb.y = (gdb.height + 3 * Tile.TILE_SCALE) * Std.int(i / NUM_COLUMNS);
 			grid[grid.length - 1].push(gdb);
 		}
 		grid[focus.y][focus.x].focus();
@@ -66,13 +96,31 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 	}
 	
 	public function focusTo(newLoc:Pair<Int>) {
-		if (focus.y >= 0 && focus.x >= 0) {
+		if (focus.y >= 0 && focus.x >= 0 && fixedFocus.indexOf(X_MULT * focus.x + focus.y) == -1) {
 			grid[focus.y][focus.x].loseFocus();
 		}
 		focus = [newLoc.x, newLoc.y];
-		if (focus.y >= 0 && focus.x >= 0) {
+		if (focus.y >= 0 && focus.x >= 0 && fixedFocus.indexOf(X_MULT * focus.x + focus.y) == -1) {
 			grid[focus.y][focus.x].focus();
 		}
+	}
+	
+	public function addFixedFocus(loc:Pair<Int>) {
+		fixedFocus.push(X_MULT * loc.x + loc.y);
+		if (loc.x != focus.x || loc.y != focus.y) {
+			grid[loc.x][loc.y].focus();
+		}
+	}
+	
+	public function removeFixedFocus(loc:Pair<Int>) {
+		fixedFocus.remove(X_MULT * loc.x + loc.y);
+		if (loc.x != focus.x || loc.y != focus.y) {
+			grid[loc.y][loc.x].loseFocus();
+		}
+	}
+	
+	public function getGridSpriteSelected():FlxLocalSprite {
+		return grid[focus.y][focus.x];
 	}
 	
 	public function getItemSelected():Dynamic {

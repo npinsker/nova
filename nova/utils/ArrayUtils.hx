@@ -81,12 +81,25 @@ class ArrayUtils {
 		return (index != -1);
 	}
 	
-	public static function exactMatch<T>(a:Array<T>, b:Array<T>) {
+	public static function exactMatch<T>(a:Array<T>, b:Array<T>):Bool {
 		if (a.length != b.length) return false;
 		for (i in 0...a.length) {
 			if (a[i] != b[i]) return false;
 		}
 		return true;
+	}
+	
+	public static function unorderedMatch<T>(a:Array<T>, b:Array<T>, fn:T -> T -> Int):Bool {
+		if (a.length != b.length) return false;
+		var sa:Array<T> = a.copy();
+		sa.sort(fn);
+		var sb:Array<T> = b.copy();
+		sb.sort(fn);
+		return exactMatch(sa, sb);
+	}
+	
+	public static function unorderedStringMatch(a:Array<String>, b:Array<String>):Bool {
+		return unorderedMatch(a, b, function(a, b) { return (a < b ? -1 : 1); });
 	}
 	
 	public static function randomShuffle<T>(a:Array<T>):Void {

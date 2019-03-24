@@ -1,10 +1,13 @@
 package nova.ui.dialog;
 
+import nova.animation.Director;
 import openfl.Assets;
 
 import nova.ui.dialog.DialogNodeSequence;
 import nova.ui.dialog.ExpressionNode;
+import nova.utils.CharUtils;
 
+using nova.animation.Director;
 using nova.utils.ArrayUtils;
 using StringTools;
 
@@ -14,10 +17,12 @@ using StringTools;
  */
 
 enum DialogTokenType {
-	NUMBER;
+	INT;
+	FLOAT;
 	VARIABLE;
 	RESERVED;
 	STRING;
+	ARITHMETIC_OP;
 	EQUALS_SIGN;
 	DOUBLE_EQUALS_SIGN;
 	LESS_THAN_SIGN;
@@ -52,10 +57,12 @@ class DialogParser {
 		"clear",
 		"if",
 		"emit",
+		"wait",
 		"else",
 		"not",
 		"or",
 		"and",
+		"return",
 		"debug",
 	];
 	
@@ -83,14 +90,28 @@ class DialogParser {
 		var builtTokens:Array<DialogToken> = new Array<DialogToken>();
 		
 		var i = 0;
-		
 		while (i < text.length) {
-			if (text.charCodeAt(i) >= '0'.code && text.charCodeAt(i) <= '9'.code) {
+			if (CharUtils.isDigit(text.charCodeAt(i)) ||
+				(i < text.length - 1 && text.charAt(i) == '-' && CharUtils.isDigit(text.charCodeAt(i+1)))) {
 				var anchorI:Int = i;
-				while (i < text.length && text.charCodeAt(i) >= '0'.code && text.charCodeAt(i) <= '9'.code) {
-					++i;
+				if (text.charAt(i) == '-') {
+				  ++i;
 				}
-				builtTokens.push(new DialogToken(NUMBER, Std.parseInt(text.substr(anchorI, i - anchorI))));
+				var periodCount:Int = 0;
+				while (i < text.length && ((text.charCodeAt(i) >= '0'.code && text.charCodeAt(i) <= '9'.code) || text.charCodeAt(i) == '.'.code)) {
+					++i;
+					if (text.charCodeAt(i) == '.'.code) {
+						periodCount += 1;
+					}
+				}
+				var textStr:String = text.substr(anchorI, i - anchorI);
+				if (periodCount == 0) {
+					builtTokens.push(new DialogToken(INT, Std.parseInt(textStr)));
+				} else if (periodCount == 1) {
+					builtTokens.push(new DialogToken(FLOAT, Std.parseFloat(textStr)));
+				} else {
+					trace("Error: Too many periods for string " + textStr);
+				}
 			} else if (text.charAt(i) == '\"' || text.charAt(i) == '\'') {
 				var pt = i + 1;
 				var next = text.indexOf(text.charAt(i), pt);
@@ -111,6 +132,9 @@ class DialogParser {
 			} else if (text.charAt(i) == ')') {
 				builtTokens.push(new DialogToken(CLOSE_PARENTHESIS));
 				++i;
+			} else if (['+', '-', '*', '/'].indexOf(text.charAt(i)) != -1) {
+				builtTokens.push(new DialogToken(ARITHMETIC_OP, text.charAt(i)));
+				++i;
 			} else if (text.charAt(i) == ':') {
 				builtTokens.push(new DialogToken(COLON));
 				++i;
@@ -118,9 +142,27 @@ class DialogParser {
 				builtTokens.push(new DialogToken(COMMA));
 				++i;
 			} else if (text.charAt(i) == '>') {
-				builtTokens.push(new DialogToken(RESERVED, 'choice'));
-				++i;
-			} else if (text.charAt(i) == '#') {
+				if (builtTokens.length == 0) {
+					builtTokens.push(new DialogToken(RESERVED, 'choice'));
+					++i;
+				} else {
+					if (text.charAt(i + 1) == '=') {
+						builtTokens.push(new DialogToken(GREATER_THAN_EQUALS_SIGN, null));
+						i += 2;
+					} else {
+						builtTokens.push(new DialogToken(GREATER_THAN_SIGN, null));
+						++i;
+					}
+				}
+			} else if (text.charAt(i) == '<') {
+				if (i < text.length - 1 && text.charAt(i + 1) == '=') {
+          builtTokens.push(new DialogToken(LESS_THAN_EQUALS_SIGN, null));
+          i += 2;
+        } else {
+          builtTokens.push(new DialogToken(LESS_THAN_SIGN, null));
+          ++i;
+        }
+      } else if (text.charAt(i) == '#') {
 				break;
 			} else if (text.charAt(i) == '$') {
 				builtTokens.push(new DialogToken(DOLLAR_SIGN));
@@ -143,9 +185,9 @@ class DialogParser {
 					builtTokens.push(new DialogToken(RESERVED, resultString));
 				} else {
 					if (resultString.toLowerCase() == 'true') {
-						builtTokens.push(new DialogToken(NUMBER, 1));
+						builtTokens.push(new DialogToken(INT, 1));
 					} else if (resultString.toLowerCase() == 'false') {
-						builtTokens.push(new DialogToken(NUMBER, 0));
+						builtTokens.push(new DialogToken(INT, 0));
 					} else {
 						builtTokens.push(new DialogToken(VARIABLE, resultString));
 					}
@@ -154,7 +196,6 @@ class DialogParser {
 				++i;
 			}
 		}
-		
 		return builtTokens;
 	}
 
@@ -220,6 +261,11 @@ class DialogParser {
 				} else if (tokens[0].value == 'label') {
 					var newNode = new DialogSyntaxNode(LABEL, tokens[1].value);
 					callStack.last().sequence.push(newNode);
+				} else if (tokens[0].value == 'return') {
+					var s1 = indexOfTokenType(tokens, VARIABLE);
+					var s2 = indexOfTokenType(tokens, STRING);
+					var labelName:String = tokens[Std.int(Math.max(s1, s2))].value;
+					callStack.last().sequence.push(new DialogSyntaxNode(RETURN, labelName));
 				} else if (tokens[0].value == 'debug') {
 					var newNode = new DialogSyntaxNode(DEBUG, {line: i + 1, name: tokens[1].value});
 					callStack.last().sequence.push(newNode);
@@ -233,11 +279,27 @@ class DialogParser {
 					var s2 = indexOfTokenType(tokens, STRING, 1);
 					var labelName:String = tokens[Std.int(Math.max(s1, s2))].value;
 					callStack.last().sequence.push(new DialogSyntaxNode(EMIT, labelName));
+				} else if (tokens[0].value == 'wait') {
+					var s1 = indexOfTokenType(tokens, FLOAT, 1);
+					var tokenValue:Float = tokens[s1].value;
+					callStack.last().sequence.push(new DialogSyntaxNode(FUNCTION, function(k:DialogBox) {
+						k.skip = false;
+						k.canAdvance = false;
+						Director.wait(k, Std.int(60 * tokenValue)).call(function(s) {
+							cast(s, DialogBox).skip = true;
+							cast(s, DialogBox).canAdvance = true;
+							cast(s, DialogBox).advanceAndRender();
+						});
+					}));
 				} else if (tokens[0].value == 'choice') {
 					var s1 = indexOfTokenType(tokens, STRING);
 					var s2 = indexOfTokenType(tokens, STRING, s1 + 1);
 					var s2_2 = indexOfTokenType(tokens, VARIABLE, s1 + 1);
-					var newNode = new DialogSyntaxNode(CHOICE, {text: tokens[s1].value, tag: tokens[(s2 > s2_2 ? s2 : s2_2)].value});
+					var s3 = s2 > s2_2 ? s2 : s2_2;
+					if (s3 == -1) {
+						trace("Error: Could not parse choice on line " + (i + 1) + ": " + line);
+					}
+					var newNode = new DialogSyntaxNode(CHOICE, {text: tokens[s1].value, tag: tokens[s3].value});
 					callStack.last().sequence.push(newNode);
 				} else if (tokens[0].value == 'choice_box') {
 					var newNode = new DialogSyntaxNode(CHOICE_BOX, null, new DialogNodeSequence());
@@ -273,7 +335,11 @@ class DialogParser {
 					callStack.last().sequence.push(new DialogSyntaxNode(TEXT, {text: tokens[nextToken].value, speaker: speaker}));
 				}
 			} else if (tokens[0].type == STRING) {
-				callStack.last().sequence.push(new DialogSyntaxNode(TEXT, {text: tokens[0].value}));
+				if (tokens.length > 1 && tokens[1].type == STRING) {
+					callStack.last().sequence.push(new DialogSyntaxNode(TEXT, {text: tokens[1].value, speaker: tokens[0].value}));
+				} else {
+					callStack.last().sequence.push(new DialogSyntaxNode(TEXT, {text: tokens[0].value}));
+				}
 			}
 		}
 		return rootSequence;
@@ -281,8 +347,8 @@ class DialogParser {
 	
 	public static function parseExpression(tokens:Array<DialogToken>):ExpressionNode {
 		if (tokens.length == 1) {
-			if (tokens[0].type == STRING || tokens[0].type == NUMBER) {
-				return new ExpressionNode((tokens[0].type == STRING ? STRING : INTEGER), tokens[0].value);
+			if (tokens[0].type == STRING || tokens[0].type == INT || tokens[0].type == FLOAT) {
+				return new ExpressionNode((tokens[0].type == STRING ? STRING : (tokens[0].type == INT ? INTEGER : FLOAT)), tokens[0].value);
 			} else if (tokens[0].type == VARIABLE) {
 				return new ExpressionNode(VARIABLE, tokens[0].value);
 			} else {
@@ -302,7 +368,11 @@ class DialogParser {
 				root.leftChild = parseExpression(tokens.slice(0, index));
 				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
 				return root;
-			} else if (tok.type == DOUBLE_EQUALS_SIGN) {
+			}
+		}
+		for (index in outsideIndices) {
+			var tok:DialogToken = tokens[index];
+			if (tok.type == DOUBLE_EQUALS_SIGN) {
 				var root = new ExpressionNode(EQUALS, null);
 				root.leftChild = parseExpression(tokens.slice(0, index));
 				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
@@ -322,6 +392,11 @@ class DialogParser {
 				root.leftChild = parseExpression(tokens.slice(0, index));
 				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
 				return root;
+			} else if (tok.type == ARITHMETIC_OP) {
+				var root = new ExpressionNode(ARITHMETIC_NODE, tok.value);
+				root.leftChild = parseExpression(tokens.slice(0, index));
+				root.rightChild = parseExpression(tokens.slice(index + 1, tokens.length));
+				return root;
 			} else if (tok.type == GREATER_THAN_EQUALS_SIGN) {
 				var root = new ExpressionNode(GREATER_THAN_EQUALS, null);
 				root.leftChild = parseExpression(tokens.slice(0, index));
@@ -332,6 +407,11 @@ class DialogParser {
 		if (tokens[0].type == RESERVED && tokens[0].value == 'not') {
 			var root = new ExpressionNode(NOT, null);
 			root.leftChild = parseExpression(tokens.slice(1, tokens.length));
+		}
+		if (tokens[0].type == VARIABLE && tokens[1].type == OPEN_PARENTHESIS && tokens[tokens.length-1].type == CLOSE_PARENTHESIS) {
+			var root = new ExpressionNode(FUNCTION, tokens[0].value);
+			root.leftChild = parseExpression(tokens.slice(2, tokens.length - 1));
+			return root;
 		}
 		return null;
 	}

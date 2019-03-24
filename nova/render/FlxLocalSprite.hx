@@ -6,7 +6,9 @@ import flixel.FlxSprite;
 import flixel.graphics.frames.FlxFrame;
 import flixel.graphics.frames.FlxFramesCollection;
 import flixel.graphics.frames.FlxTileFrames;
+import flixel.group.FlxSpriteGroup;
 import flixel.math.FlxAngle;
+import flixel.math.FlxPoint;
 import flixel.system.FlxAssets.FlxGraphicAsset;
 import flixel.util.FlxSort;
 import nova.utils.Pair;
@@ -44,16 +46,18 @@ class LocalWrapper<T:FlxSprite> extends FlxLocalSprite {
 	
 	override function set_x(Value:Float):Float {
 		x = Value;
-		if (!_skipTransformChildren) {
-			_sprite.x = globalX;
-		}
 		return Value;
 	}
 	
 	override function set_y(Value:Float):Float {
 		y = Value;
+		return Value;
+	}
+	
+	function set_scale(Value:FlxPoint):FlxPoint {
+		scale = Value;
 		if (!_skipTransformChildren) {
-			_sprite.y = globalY;
+			_sprite.scale = Value;
 		}
 		return Value;
 	}
@@ -81,7 +85,11 @@ class LocalWrapper<T:FlxSprite> extends FlxLocalSprite {
 	}
 	
 	override public function draw():Void {
-		_sprite.draw();
+		if (this.visible) {
+			_sprite.x = globalX;
+			_sprite.y = globalY;
+			_sprite.draw();
+		}
 		
 		#if FLX_DEBUG
 		if (FlxG.debugger.drawDebug)
@@ -93,6 +101,11 @@ class LocalWrapper<T:FlxSprite> extends FlxLocalSprite {
 		_sprite.destroy();
 		
 		super.destroy();
+	}
+	
+	override function update(elapsed:Float) {
+		super.update(elapsed);
+		_sprite.updateAnimation(elapsed);
 	}
 }
 
@@ -126,6 +139,10 @@ class FlxLocalSprite extends FlxSprite {
 		if (!relative) {
 			Sprite.x -= globalOffset.x;
 			Sprite.y -= globalOffset.y;
+		} else {
+			// needed to trigger percolation
+			Sprite.x = Sprite.x;
+			Sprite.y = Sprite.y;
 		}
 	}
 	
@@ -158,6 +175,15 @@ class FlxLocalSprite extends FlxSprite {
 			}*/
 		}
 		return false;
+	}
+	
+	override public function isOnScreen(?Camera:FlxCamera):Bool {
+		var minX = this.globalX;
+		var minY = this.globalY;
+		var maxX = this.globalX + this.width;
+		var maxY = this.globalY + this.height;
+		
+		return (minX <= FlxG.width || maxX >= 0) && (minY <= FlxG.height && maxY >= 0);
 	}
 	
 	override public function draw():Void {
