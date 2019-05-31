@@ -6,24 +6,26 @@ import flixel.text.FlxText;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import nova.render.FlxLocalSprite;
+import nova.ui.text.TextFormat.TextFormatUtils;
 import openfl.geom.Rectangle;
 import openfl.text.TextFormat;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * Text that shakes.
  */
 class ShakeText extends RichText {
 	public var originalX:Array<Float>;
 	public var SHAKE_INTENSITY:Float = 2;
 
-	public function new(text:String, ?font:String = null) {
+	public function new(text:String, ?textFormat:nova.ui.text.TextFormat = null) {
 		super();
-		
+
 		var tempTextField:TextField = new TextField();
-		tempTextField.setTextFormat(new TextFormat((font != null ? font : FlxAssets.FONT_DEFAULT), 24, 0xFFFFFF));
-		
+		if (textFormat != null) {
+			TextFormatUtils.setTextFormat(tempTextField, textFormat);
+		}
 		tempTextField.text = text;
+		
 		originalX = new Array<Float>();
 		
 		for (i in 0...text.length) {
@@ -31,6 +33,9 @@ class ShakeText extends RichText {
 			var wrapper:LocalWrapper<FlxText> = new LocalWrapper(new FlxText(0, 0, boundaries.width + 1, text.charAt(i), 24));
 			wrapper.x = boundaries.x;
 			originalX.push(boundaries.x);
+			if (textFormat != null) {
+				TextFormatUtils.setTextFormat(wrapper._sprite, textFormat);
+			}
 
 			add(wrapper);
 		}

@@ -4,8 +4,8 @@
   "license": "MIT",
   "tags": ["game", "openfl", "flash", "neko", "flixel"],
   "description": "Nova is a set of game development tools on top of Flixel to supercharge common tasks.",
-  "version": "0.3.0",
-  "releasenote": "Add unit tests. Allow a single integer argument for Director.wait.",
+  "version": "0.3.6",
+  "releasenote": "Improvements to InputController and Director. Moved some packages around. Much more documentation.",
   "contributors": ["npinsker"],
   "dependencies": {
     "flixel": ""

@@ -4,8 +4,9 @@ import flixel.math.FlxRect;
 import nova.utils.Pair;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * Checks for collisions against a set of tiles.
+ *
+ * For most use cases these checks will have O(1) runtime since the tiles have fixed size.
  */
 @:generic
 class TileCollisionSet<T> {

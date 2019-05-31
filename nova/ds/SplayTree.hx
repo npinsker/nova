@@ -1,19 +1,20 @@
-package;
+package nova.ds;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * A splay tree.
+ * 
+ * Currently does not work.
  */
 
 class Node {
-	var value:Int;
+	public var value:Int;
 	
-	var parent:Node;
-	var left:Node;
-	var right:Node;
+	public var parent:Node;
+	public var left:Node;
+	public var right:Node;
 	
 	public function new(value:Int) {
-		self.value = value;
+		this.value = value;
 		
 		parent = null;
 		left = null;
@@ -25,7 +26,7 @@ class SplayTree {
 	public var root:Node = null;
 	
 	public static function rotateRight(pivot:Node):Node {
-		Node l = pivot.left;
+		var l:Node = pivot.left;
 		pivot.left = l.right;
 		l.parent = pivot.parent;
 		pivot.parent = l;
@@ -34,7 +35,7 @@ class SplayTree {
 	}
 	
 	public static function rotateLeft(pivot:Node):Node {
-		Node r = pivot.right;
+		var r:Node = pivot.right;
 		pivot.right = r.left;
 		r.parent = pivot.parent;
 		pivot.parent = r;
@@ -46,7 +47,7 @@ class SplayTree {
 		var lastNode:Node = null;
 		for (value in values) {
 			if (lastNode == null) {
-				lastNode = value;
+				lastNode.value = value;
 				root = lastNode;
 			} else {
 				var newNode:Node = new Node(value);

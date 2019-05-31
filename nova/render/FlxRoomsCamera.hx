@@ -8,13 +8,10 @@ import flixel.math.FlxRect;
 import flixel.FlxSprite;
 
 /**
- * 
- * 
+ * FlxCamera with support for multiple 'rooms'. The camera will always show
+ * the player on screen but will never show more than one room at once.
+ *
  * Rooms should be provided as an Array of FlxRects.
- * 
- * The camera's behavior is as 
- * 
- * @author Nathan Pinsker
  */
 class FlxRoomsCamera extends FlxCamera {
 	private var _roomData:Array<FlxRect>;

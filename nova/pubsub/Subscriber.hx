@@ -1,7 +1,7 @@
 package nova.pubsub;
 
 /**
- * @author Nathan Pinsker
+ * Not used.
  */
 class Subscriber {
 	public var read:Dynamic -> Void;

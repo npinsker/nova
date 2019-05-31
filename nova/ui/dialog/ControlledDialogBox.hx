@@ -13,8 +13,10 @@ import nova.utils.Pair;
 using nova.animation.Director;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * A `DialogBox` that is directly controlled through a setText method rather than through input.
+ * 
+ * In most cases it's recommended to initialize instances of this class through a `DialogBoxFactory`
+ * rather than doing so directly.
  */
 class ControlledDialogBox extends DialogBox {
 	public var message:Dynamic;

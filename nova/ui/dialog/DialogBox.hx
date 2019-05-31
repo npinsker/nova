@@ -17,6 +17,8 @@ import nova.input.Focusable;
 import nova.render.FlxLocalSprite;
 import nova.render.TiledBitmapData;
 import nova.ui.dialog.DialogNodeSequence;
+import nova.ui.text.TextFormat;
+import nova.ui.text.WaveText;
 import nova.utils.BitmapDataUtils;
 import nova.utils.Pair;
 import nova.input.InputController;
@@ -49,6 +51,26 @@ enum DialogBoxMode {
 	SELECT_OPTION;
 }
 
+enum FlagType {
+	START;
+	END;
+	POINT;
+}
+
+typedef DialogBoxFlag = {
+	@:optional var name:String;
+	@:optional var flagAction:String -> FlxLocalSprite;
+	@:optional var genericAction:DialogBox -> Void;
+	@:optional var type:FlagType;
+	@:optional var position:Int;
+}
+
+/**
+ * A powerful dialog box class with a focus on configuration and extensibility.
+ * 
+ * In most cases it's recommended to initialize instances of this class through a `DialogBoxFactory`
+ * rather than doing so directly.
+ */
 class DialogBox extends FlxLocalSprite implements Focusable {
 	public static inline var DEFAULT_TEXT_PADDING_X:Int = 6;
 	public static inline var DEFAULT_TEXT_PADDING_Y:Int = 5;
@@ -57,8 +79,16 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	
 	public static inline var DEFAULT_FONT_SIZE:Float = 5;
 	
-	public var abort:Bool = false;  // Whether the user can leave the dialog at any point.
-	public var skip:Bool = true;  // Whether the user can press the 'Advance' key to display all text in the pane.
+  /**
+    * Whether the user can leave the dialog box at any point.
+    */
+	public var abort:Bool = false;
+
+  /**
+    * Whether the user can press the 'advance' key to display all text in the pane,
+    * in TYPEWRITER mode.
+    */
+	public var skip:Bool = true;
 	public var finished:Bool = false;
 	
 	public var labelMap:Map<String, Int>;
@@ -69,10 +99,14 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	public var advanceLength:Int = 8;
 	public var advancing:Bool = false;
 	public var advanceSound:String = null;
+  public var advanceCallback:Void -> Void = null;
+  public var textAppearCallback:Int -> Void = null;
 	public var advanceIndicatorInfo:Dynamic;
 	public var advanceIndicatorSprite:LocalSpriteWrapper = null;
 	public var advanceIndicatorTween:FlxTween;
 	public var mode = DialogBoxMode.NORMAL;
+	public var flags:Array<DialogBoxFlag>;
+	public var pause:Int = 0;
 	
 	public var choices:Array<String>;
 	public var choiceIndex:Int = 0;
@@ -88,6 +122,7 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	public var bgSprite:FlxLocalSprite = null;
 	public var text:LocalWrapper<FlxText>;
 	public var nextText:LocalWrapper<FlxText>;
+	public var movieClipContainer:FlxLocalSprite = null;
 	public var copiedText:FlxSprite;
 	public var messages:DialogNodeSequence;
 	public var bottomImageStore:FlxSprite;
@@ -127,31 +162,116 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 	public var pointer:DialogSequencePointer;
 	public var labels:Map<String, Int>;
 	
-	private static function _typeOutAction(text:String, frames:Int):Action {
-		return new Action(function(sprite:FlxSprite, object:Dynamic) { object.text = text; cast(sprite, FlxText).text = ""; },
-		                  function(sprite:FlxSprite, frame:Int, object:Dynamic):Void {
+	private function getFlag(position:Int):DialogBoxFlag {
+		for (flag in flags) {
+			var name:String = flag.name;
+			var count:Int = 0;
+			for (flag in flags) {
+				if (flag.type != POINT && flag.name == name && flag.position <= position) {
+					count += (flag.type == START ? 1 : -1);
+				}
+			}
+			if (count != 0) {
+				return flag;
+			}
+		}
+		return null;
+	}
+	
+	private function getPointFlag(position:Int):DialogBoxFlag {
+		for (flag in flags) {
+			if (flag.type == POINT && flag.position == position) {
+				return flag;
+			}
+		}
+		return null;
+	}
+	
+	private static function _typeOutAction(text:String, frames:Int, ?options:Dynamic):Action {
+		return new Action(function(sprite:FlxSprite, object:Dynamic) {
+							var spriteAsText:FlxText = cast(sprite, FlxText);
+							var utf8Text:UTF8String = new UTF8String(text);
+
+							object.options = options;
+							object.currentLength = 0;
+							object.done = false;
+							
+							spriteAsText.text = text;
+							
+							var builtText:String = '';
+							var characterPositions:Array<Pair<Float>> = [];
+							var lastPosition:Pair<Float> = [0, 0];
+							for (i in 0...utf8Text.length) {
+								var posn = spriteAsText.textField.getCharBoundaries(i);
+								characterPositions.push([posn.x, posn.y]);
+								if (i > 0 && lastPosition.x > posn.x) {
+									builtText = builtText.substring(0, builtText.length - 1) + '\n';
+								}
+								builtText += utf8Text.charAt(i);
+								lastPosition = [posn.x, posn.y];
+							}
+							object.text = builtText.toString();
+							var og:Pair<Float> = [characterPositions[0].x, characterPositions[0].y];
+							object.characterPositions = [for (cp in characterPositions) cp - og];
+							spriteAsText.text = "";
+						  },
+              function(sprite:FlxSprite, frame:Int, object:Dynamic):Void {
+                var db:DialogBox = cast(object.options.target, DialogBox);
+							  if (db.pause > 0) {
+								  db.pause -= 1;
+								  return;
+							  }
+                if (db.textAppearCallback != null) {
+                  db.textAppearCallback(frame);
+                }
+
 							  var textSprite:FlxText = cast(sprite, FlxText);
 							  var utf8Text:UTF8String = new UTF8String(object.text);
-							  var prevLength:Int = Std.int(utf8Text.length * (frame - 1) / frames);
-							  var newLength:Int = Std.int(utf8Text.length * frame / frames);
-							  var newSubstring:String = utf8Text.substring(prevLength, newLength);
-							  var firstSpace:Int = newSubstring.indexOf(' ');
-							  if (firstSpace != -1) {
-								  textSprite.text = utf8Text.substring(0, newLength);
-								  var lastSpace:Int = prevLength + newSubstring.lastIndexOf(' ');
-								  var nextSpace:Int = utf8Text.indexOf(' ', lastSpace + 1);
-								  var lines:Int = textSprite.textField.numLines;
-								  
-								  textSprite.text = utf8Text.substring(0, nextSpace);
-								  if (textSprite.textField.numLines > lines) {
-									  textSprite.text = utf8Text.substring(0, prevLength + firstSpace) + '\n' +
-									                    utf8Text.substring(prevLength + firstSpace + 1, newLength);
-								  } else {
-									  textSprite.text = utf8Text.substring(0, newLength);
-								  }
-							  } else {
-								textSprite.text = utf8Text.substring(0, newLength);
+							  var prevLength:Int = object.currentLength;
+							  var addCount:Int = Std.int(utf8Text.length / frames);
+							  if (addCount < 1) addCount = 1;
+							  var newLength:Int = prevLength + addCount;
+							  if (newLength >= utf8Text.length) {
+								  newLength = utf8Text.length;
+								  object.done = true;
 							  }
+							  
+							  if (db.flags.length == 0) {
+                  textSprite.text = utf8Text.substring(0, newLength);
+							  } else {
+								var diff:UTF8String = utf8Text.substring(prevLength, newLength);
+								
+								for (i in prevLength...newLength) {
+									var flag = db.getFlag(i);
+									var posn:Pair<Float> = object.characterPositions[i];
+									var db:DialogBox = cast(object.options.target, DialogBox);
+									
+									if (flag == null) {
+										var lc = new LocalWrapper<FlxText>(new FlxText(0, 0, 0, utf8Text.charAt(i)));
+										setTextFormat(lc._sprite, object.options.textFormat);
+										db.movieClipContainer.add(lc);
+										lc.x = posn.x;
+										lc.y = posn.y;
+									} else {
+										var wt:FlxLocalSprite = flag.flagAction(utf8Text.charAt(i));
+										var lc = wt;
+										db.movieClipContainer.add(lc);
+										lc.x = posn.x;
+										lc.y = posn.y;
+									}
+									
+									var genericFlag = db.getPointFlag(i);
+									if (genericFlag != null) {
+										genericFlag.genericAction(db);
+									}
+									
+									if (db.pause > 0) {
+										newLength = i + 1;
+										break;
+									}
+								}
+							  }
+							  object.currentLength = newLength;
 						  },
 						  frames);
 	}
@@ -188,10 +308,17 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 						  frames);
 	}
 	
-	public static function typeOut(sprite:OneOfTwo<FlxText, Actor>, text:String, frames:Int):Actor {
-		return Director.directorChainableFn(_typeOutAction(text, frames), cast(sprite, FlxSprite), DIRECTOR_DIALOG_TRANSITION_STR);
+  /**
+    * Create a 'type-out' action like what's used in the TYPEWRITER dialog box style.
+    */
+	public static function typeOut(sprite:OneOfTwo<FlxText, Actor>, text:String, frames:Int, ?options:Dynamic):Actor {
+		return Director.directorChainableFn(_typeOutAction(text, frames, options), cast(sprite, FlxSprite), DIRECTOR_DIALOG_TRANSITION_STR,
+			function(a:Actor):Bool { return a.action.object.done; } );
 	}
 	
+  /**
+    * Create a 'slide-in' action like what's used in the SCROLL dialog box style.
+    */
 	public static function slideIn(sprite:OneOfTwo<FlxSprite, Actor>, startOffset:String, frames:Int):Actor {
 		return Director.directorChainableFn(_slideInAction(startOffset, frames), cast(sprite, FlxSprite), DIRECTOR_SLIDEIN_TRANSITION_STR);
 	}
@@ -221,13 +348,14 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		this.globalVariables = new Map<String, Dynamic>();
 		this.globalReferences = new Array<String>();
 		this.choicesTaken = new Array<String>();
+		this.flags = new Array<DialogBoxFlag>();
 		
 		if (Reflect.hasField(options, 'scale')) {
 			Reflect.setField(this, 'globalScale', Reflect.field(options, 'scale'));
 		}
 		
 		for (supportedField in ['abort', 'align', 'skip', 'advanceStyle', 'advanceLength',
-		                        'advanceSound', 'callback', 'abortCallback', 'emitCallback',
+		                        'textAppearCallback', 'callback', 'abortCallback', 'emitCallback', 'advanceCallback',
 								'selectOptionSprite', 'globalVariables', 'speakerSpriteMap', 'textPreprocess', 'textPadding']) {
 			if (Reflect.hasField(options, supportedField)) {
 				Reflect.setField(this, supportedField, Reflect.field(options, supportedField));
@@ -322,6 +450,9 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		add(text);
 		setTextFormat(text._sprite, options.textFormat);
 		
+		this.movieClipContainer = new FlxLocalSprite();
+		add(this.movieClipContainer);
+		
 		if (messages != null) {
 			if (pointer.get().type != TEXT && pointer.get().type != CHOICE_BOX) {
 				advanceUntilBlocked(false);
@@ -337,6 +468,8 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 			}
 			renderText(parseDialogNode());
 		}
+		movieClipContainer.x = text.x;
+		movieClipContainer.y = text.y;
 	}
 	
 	public function parseDialogNode():Dynamic {
@@ -384,7 +517,7 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		}
 	}
 	
-	public function advanceUntilBlocked(stepFirst:Bool = true) {
+	private function advanceUntilBlocked(stepFirst:Bool = true) {
 		var steppedFirst = false;
 		while (true) {
 			if (stepFirst || steppedFirst) {
@@ -491,9 +624,9 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 				var strIndex = 0;
 				var choiceText:FlxText = new FlxText(0, 0, 0);
 				if (Reflect.hasField(options, 'choiceTextFormat')) {
-					setTextFormat(choiceText, StructureUtils.merge(options.choiceTextFormat, {size: 5}));
+					setTextFormat(choiceText, StructureUtils.merge(options.choiceTextFormat, {size: 5 * globalScale}));
 				} else {
-					setTextFormat(choiceText, StructureUtils.merge(options.textFormat, {size: 5}));
+					setTextFormat(choiceText, StructureUtils.merge(options.textFormat, {size: 5 * globalScale}));
 				}
 				
 				choiceSprite = new LocalWrapper(choiceText);
@@ -616,8 +749,8 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 			add(nextText);
 	
 			Director.afterAll(null,
-				[text.moveBy([0, -Std.int(bgSprite.height)], advanceLength, DIRECTOR_DIALOG_TRANSITION_STR),
-				 nextText.moveBy([0, -Std.int(bgSprite.height)], advanceLength, DIRECTOR_DIALOG_TRANSITION_STR)]).call(function(sprite:FlxSprite) {
+				[text.moveBy([0, -Std.int(bgSprite.height)], advanceLength, {tag: DIRECTOR_DIALOG_TRANSITION_STR}),
+				 nextText.moveBy([0, -Std.int(bgSprite.height)], advanceLength, {tag: DIRECTOR_DIALOG_TRANSITION_STR})]).call(function(sprite:FlxSprite) {
 					this.remove(text);
 					text.destroy();
 					text = nextText;
@@ -646,7 +779,7 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 				redrawOptions();
 			}
 			
-			DialogBox.typeOut(this.text._sprite, nextTextStr, advanceLength).call(function(sprite:FlxSprite) {
+			DialogBox.typeOut(this.text._sprite, nextTextStr, advanceLength, {target: this, textFormat: options.textFormat}).call(function(sprite:FlxSprite) {
 				advancing = false;
 				if (advanceIndicatorSprite != null) advanceIndicatorSprite.visible = true;
 				if (choiceSprite != null) {
@@ -657,8 +790,20 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		}
 	}
 	
+  /**
+    * Advances the dialog box and re-renders the box with the new text,
+    * applying animations if appropriate.
+    */
 	public function advanceAndRender() {
 		advanceUntilBlocked();
+		
+		remove(movieClipContainer);
+		movieClipContainer = new FlxLocalSprite();
+		add(movieClipContainer);
+
+    if (advanceCallback != null) {
+      advanceCallback();
+    }
 			
 		if (pointer.get() != null) {
 			if (pointer.get().type == RETURN) {
@@ -674,6 +819,8 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 				return;
 			}
 			renderText(parseDialogNode());
+			movieClipContainer.x = text.x;
+			movieClipContainer.y = text.y;
 		} else {
 			if (this.callback != null && boxCallbackStr == null) {
 				this.callback();
@@ -682,6 +829,9 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		}
 	}
 	
+  /**
+    * Re-renders the 'option select' component if it is currently showing.
+    */
 	public function redrawOptions() {
 		var choiceTextStr = this.choices.join('\n');
 		var lineHeight = choiceSprite._sprite.textField.getLineMetrics(0).height;
@@ -787,10 +937,10 @@ class DialogBox extends FlxLocalSprite implements Focusable {
 		}
 	}
 	
-	function setTextFormat(text:FlxText, format:Dynamic) {
-		var font:String = (Reflect.hasField(format, 'font') ? format.font : null);
-		var size:Int = Std.int(Reflect.hasField(format, 'size') ? format.size * globalScale : DEFAULT_FONT_SIZE * globalScale);
-		var color:FlxColor = (Reflect.hasField(format, 'color') ? format.color : FlxColor.BLACK);
+	static function setTextFormat(text:FlxText, format:TextFormat) {
+		var font:String = format.font;
+		var size:Int = Std.int(format.size != null ? format.size : DEFAULT_FONT_SIZE);
+		var color:FlxColor = (format.color != null ? FlxColor.fromInt(format.color) : FlxColor.BLACK);
 
 		text.setFormat(font, size, color);
 	}

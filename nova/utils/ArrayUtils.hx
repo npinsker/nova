@@ -4,8 +4,6 @@ using Lambda;
 
 /**
  * A lightweight class containing simple Array utilities.
- * 
- * @author Nathan Pinsker
  */
 
 class ArrayUtils {
@@ -19,12 +17,12 @@ class ArrayUtils {
 			}, null);
 	}
 	
-	public static function min(a:Array<Float>):Float {
-		return foldFn(a, Math.min);
+	public static function min<K:Float>(a:Array<K>):K {
+		return foldFn(a, function(x, y) { return (x < y ? x : y); } );
 	}
 	
-	public static function max(a:Array<Float>):Float {
-		return foldFn(a, Math.max);
+	public static function max<K:Float>(a:Array<K>):K {
+		return foldFn(a, function(x, y) { return (x < y ? x : y); } );
 	}
 	
 	public static function minBy<T>(a:Array<T>, cmpFn:T -> Float):T {
@@ -43,7 +41,7 @@ class ArrayUtils {
 	public static function last<T>(a:Array<T>):T {
 		return a[a.length - 1];
 	}
-	
+
 	public static function indexOf<T>(a:Array<T>, element:T, ?cmpFn:T -> T -> Bool = null):Int {
 		for (i in 0...a.length) {
 			if (cmpFn == null && a[i] == element) {
@@ -54,6 +52,27 @@ class ArrayUtils {
 			}
 		}
 		return -1;
+	}
+
+  public static function binarySearch<T>(a:Array<T>, element:T, ?valueFn:T -> Float = null):Int {
+    var lowIndex:Int = -1;
+    var highIndex:Int = a.length - 1;
+    var targetValue:Float = valueFn(element);
+
+    while (lowIndex < highIndex) {
+      var mid:Int = Std.int((lowIndex + highIndex + 1) / 2);
+      var value = valueFn(a[mid]);
+
+      if (value == targetValue) {
+        return mid;
+      } else if (value < targetValue) {
+        lowIndex = mid;
+      } else {
+        highIndex = mid - 1;
+      }
+    }
+
+    return lowIndex;
 	}
 	
 	public static function indices<T>(a:Array<T>, b:Array<Int>):Array<T> {
@@ -140,5 +159,11 @@ class ArrayUtils {
 			index += columns;
 		}
 		return builtArray;
+	}
+	
+	public static function map2D<T, U>(a:Array<Array<T>>, fn:T -> U):Array<Array<U>> {
+		return a.map(function(row:Array<T>) {
+			return row.map(fn);
+		});
 	}
 }

@@ -1,4 +1,4 @@
-package nova;
+package nova.experimental;
 
 import flixel.system.FlxAssets.FlxTilemapGraphicAsset;
 import flixel.tile.FlxTilemap;

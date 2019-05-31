@@ -1,13 +1,8 @@
-package nova;
+package nova.ds;
 
 import nova.ds.DefaultMaps.DefaultIntMap;
 import nova.ds.DefaultMaps.DefaultStringMap;
 import nova.utils.ArrayUtils;
-
-/**
- * ...
- * @author Nathan Pinsker
- */
 
 @:generic
 class GroupsIntMap<K> {

@@ -10,8 +10,7 @@ import nova.utils.BitmapDataUtils;
 import nova.utils.Pair;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * A class for working with bitmaps that represent sets of tiles.
  */
 class TiledBitmapData {
 	public var graphic:FlxGraphic;
@@ -36,6 +35,12 @@ class TiledBitmapData {
 		numRows = Std.int(graphic.bitmap.height / tileHeight);
 	}
 
+	/**
+	 * Returns a `BitmapData` of the tile at the given coordinates.
+	 * @param	coords Either an integer or a pair of integers designating the tile.
+	 * If an integer is supplied, then it will be parsed as a tile by numbering the tiles in book-reading order.
+	 * @return A `BitmapData` of the tile at those coordinates.
+	 */
 	public function getTile(coords:OneOfTwo<Int, Pair<Int>>):BitmapData {
 		var pairCoords:Pair<Int> = BitmapDataUtils.toIntPairFn(numColumns)(coords);
 
@@ -52,6 +57,13 @@ class TiledBitmapData {
 		return transform(tile);
 	}
 
+	/**
+	 * 
+	 * @param	coords An array of tiles to stitch into a BitmapData. Each coordinate is specified
+	 * in the same way as in `getTile`.
+	 * @return A BitmapData consisting of all requested tiles, horizontally stitched into a single
+	 * `BitmapData` object having dimensions `(tileWidth * coords.length, tileHeight)`.
+	 */
 	public function stitchTiles(coords:Array<OneOfTwo<Int, Pair<Int>>>):BitmapData {
 		var pairCoords:Array<Pair<Int>> = coords.map(BitmapDataUtils.toIntPairFn(numColumns));
 

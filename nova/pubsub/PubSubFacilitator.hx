@@ -1,8 +1,7 @@
 package nova.pubsub;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * Not used.
  */
 class PubSubFacilitator {
 	public static var instance(default, null):PubSubFacilitator = new PubSubFacilitator();

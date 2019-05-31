@@ -1,10 +1,6 @@
 package nova.ui.dialog;
 
 import nova.ui.dialog.DialogNodeSequence;
-/**
- * ...
- * @author Nathan Pinsker
- */
 
 using nova.utils.ArrayUtils;
 
@@ -28,6 +24,9 @@ enum ExpressionNodeType {
 	GREATER_THAN_EQUALS;
 }
 
+/**
+ * A node representing a mathematical expression, possibly containg variables.
+ */
 class ExpressionNode {
 	public var type:ExpressionNodeType;
 	public var value:Dynamic;
@@ -118,10 +117,12 @@ class ExpressionNode {
 			var leftResult:ExpressionNode = leftChild.evaluate(variableMap);
 			var rightResult:ExpressionNode = rightChild.evaluate(variableMap);
 			
-			if (leftResult.type != rightResult.type) {
-				trace("Warning: Attempt to evaluate type " + type + " on incompatible values " +
-              leftResult + " and " + rightResult + ". (Returning FALSE)");
-				return FALSE;
+			if ((leftResult.type != INTEGER && leftResult.type != FLOAT) || (rightResult.type != INTEGER && rightResult.type != FLOAT)) {
+				if (leftResult.type != rightResult.type) {
+					trace("Warning: Attempt to evaluate type " + type + " on incompatible values " +
+							leftResult + " and " + rightResult + ". (Returning FALSE)");
+					return FALSE;
+				}
 			}
 			
 			if (type == EQUALS) {

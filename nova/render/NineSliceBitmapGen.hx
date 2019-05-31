@@ -5,8 +5,7 @@ import nova.utils.BitmapDataUtils;
 import nova.utils.Pair;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * Utilities for working with "9-slice" bitmaps.
  */
 class NineSliceBitmapGen {
 	public var bitmapData:BitmapData;

@@ -46,8 +46,6 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 		this.columns = (Reflect.hasField(options, 'columns') ? options.columns : NUM_COLUMNS);
 		this.fixedFocus = new Array<Int>();
 		this.options = options;
-		
-		rebuildGrid();
 	}
 	
 	public var selected(get, null):GridDisplayBox;
@@ -60,39 +58,6 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 	@:noCompletion
 	public function get_selectedCoords():Pair<Int> {
 		return [focus.x, focus.y];
-	}
-	
-	public function rebuildGrid() {
-		var numSlots = inventory.length;
-		if (NUM_COLUMNS * MIN_ROWS > numSlots) {
-			numSlots = NUM_COLUMNS * MIN_ROWS;
-		}
-		
-		for (row in grid) {
-			for (gridBox in row) {
-				remove(gridBox);
-			}
-		}
-		grid.splice(0, grid.length);
-		
-		for (i in 0...numSlots) {
-			if (i % NUM_COLUMNS == 0) {
-				grid.push(new Array<GridDisplayBox>());
-			}
-			var bd:BitmapData = new BitmapData(32, 32, true, 0);
-			if (i < inventory.length && ItemUtils.itemNameMap.exists(inventory[i].name)) {
-				bd = ItemUtils.instance.getItemSprite(inventory[i].name);
-			}
-			var gdb = new GridDisplayBox(bd, inventory[i], options);
-			add(gdb);
-			gdb.x = (gdb.width + 3 * Tile.TILE_SCALE) * (i % NUM_COLUMNS);
-			gdb.y = (gdb.height + 3 * Tile.TILE_SCALE) * Std.int(i / NUM_COLUMNS);
-			grid[grid.length - 1].push(gdb);
-		}
-		grid[focus.y][focus.x].focus();
-		
-		width = 60 * NUM_COLUMNS;
-		height = 60 * Std.int(inventory.length / NUM_COLUMNS);
 	}
 	
 	public function focusTo(newLoc:Pair<Int>) {

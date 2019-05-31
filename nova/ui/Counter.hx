@@ -7,8 +7,7 @@ import nova.render.FlxLocalSprite;
 import flixel.graphics.frames.FlxBitmapFont;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * A simple counter widget.
  */
 class Counter extends FlxLocalSprite {
 	public var value:Int = 1;

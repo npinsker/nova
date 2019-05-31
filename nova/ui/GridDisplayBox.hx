@@ -30,6 +30,7 @@ class GridDisplayBox extends FlxLocalSprite {
 	public var checkedVisible:Bool = false;
 	public var options:Dynamic;
 	public var selectedColor:Int;
+	public var inAnimation:Bool = false;
 	public static var DEFAULT_SELECTED_COLOR:Int = 0x72AAEA;
 	
 	public function new(bitmapData:BitmapData, item:Dynamic, options:Dynamic) {
@@ -67,6 +68,10 @@ class GridDisplayBox extends FlxLocalSprite {
 	}
 	
 	public function focus() {
+		if (inAnimation) {
+			Director.clearTag('gridDisplayFlash');
+		}
+			
 		var nbg:BitmapData = bgBitmapData.clone();
 		nbg.applyFilter(nbg, nbg.rect, new Point(0, 0), new ColorMatrixFilter(
 			[
@@ -80,8 +85,46 @@ class GridDisplayBox extends FlxLocalSprite {
 		bg._sprite = new FlxSprite();
 		bg._sprite.loadGraphic(bgBitmapData);
 	}
+	
+	public function flashGreen() {
+		var nbg:BitmapData = bgBitmapData.clone();
+		var GREEN_COLOR:Array<Int> = [255, 255, 255];
+		
+		inAnimation = true;
+		nbg.applyFilter(nbg, nbg.rect, new Point(0, 0), new ColorMatrixFilter(
+			[
+				0, 0, 0, 0, GREEN_COLOR[0],
+				0, 0, 0, 0, GREEN_COLOR[1],
+				0, 0, 0, 0, GREEN_COLOR[2],
+				0, 0, 0, 1, 255
+			]
+			));
+		bg._sprite = new FlxSprite();
+		bg._sprite.loadGraphic(nbg);
+
+		Director.wait(null, 5, 'gridDisplayFlash').call(function(x) {
+		var nbg:BitmapData = bgBitmapData.clone();
+		nbg.applyFilter(nbg, nbg.rect, new Point(0, 0), new ColorMatrixFilter(
+			[
+				0.7, 0, 0, 0, 0.3 * GREEN_COLOR[0],
+				0, 0.7, 0, 0, 0.3 * GREEN_COLOR[1],
+				0, 0, 0.7, 0, 0.3 * GREEN_COLOR[2],
+				0, 0, 0, 1, 255
+			]
+			));
+			bg._sprite = new FlxSprite();
+			bg._sprite.loadGraphic(nbg);
+		}).wait(3, 'gridDisplayFlash').call(function(x) {
+			bg._sprite = new FlxSprite();
+			bg._sprite.loadGraphic(bgBitmapData);
+			inAnimation = false;
+		});
+	}
 
 	public function loseFocus() {
+		if (inAnimation) {
+			Director.clearTag('gridDisplayFlash');
+		}
 		if (Reflect.hasField(options, 'bgBitmapData')) {
 			bgBitmapData = options.bgBitmapData;
 		} else {

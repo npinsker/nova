@@ -6,9 +6,8 @@ import nova.utils.Pair;
 import openfl.geom.Rectangle;
 
 /**
- * Utility methods for working with tiles and tilemaps.
- * 
- * @author Nathan Pinsker
+ * Utility methods for working with tiles and tilemaps,
+ * including methods for dealing with tile collisions.
  */
 
 class TileUtils {

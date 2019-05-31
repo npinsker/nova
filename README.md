@@ -3,6 +3,8 @@
 
 Nova is a library for quickly creating 2D games in Haxe.
 
+(Questions? Try the documentation [here!](https://www.npinsker.me/nova))
+
 ### Why Haxe?
 
 I've tried a lot of game engines for 2D games. I think Haxe (plus OpenFL) is among the best. Here's why:

@@ -23,7 +23,7 @@ typedef ParticleOptions = {
 /**
  * NovaEmitter is an enhanced FlxEmitter.
  * 
- * It supports particles from multiple different sprites, colorTransforms, and more.
+ * It supports particles from multiple different sprites, arbitrary particle behavior, and more.
  */
 class NovaEmitter extends FlxLocalSprite {
 	private var _timer:Float = 0;
@@ -35,6 +35,7 @@ class NovaEmitter extends FlxLocalSprite {
 	
 	public var particles:Array<NovaParticle>;
 	
+  public var originalPosition:Pair<Float>;
 	public var lifespan:Pair<Float> = [1, 1];
 	public var speed:Pair<Float> = [300, 300];
 	public var launchAngle:Pair<Float> = [0, 2 * Math.PI];
@@ -64,8 +65,35 @@ class NovaEmitter extends FlxLocalSprite {
 		
 		particles = new Array<NovaParticle>();
 		this.xy = [X, Y];
+    this.originalPosition = [X, Y];
 		this.limit = limit;
 	}
+
+  override function set_x(value:Float):Float {
+    for (child in children) {
+			child._skipTransformChildren = true;
+			child.x += (value - x);
+			child._skipTransformChildren = false;
+		}
+
+		_skipTransformChildren = true;
+		x = value;
+		_skipTransformChildren = false;
+    return value;
+  }
+
+  override function set_y(value:Float):Float {
+    for (child in children) {
+			child._skipTransformChildren = true;
+			child.y += (value - y);
+			child._skipTransformChildren = false;
+		}
+
+		_skipTransformChildren = true;
+		y = value;
+		_skipTransformChildren = false;
+    return value;
+  }
 	
 	override public function destroy():Void {
 		lifespan = null;

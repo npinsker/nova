@@ -11,11 +11,6 @@ using nova.animation.Director;
 using nova.utils.ArrayUtils;
 using StringTools;
 
-/**
- * ...
- * @author Nathan Pinsker
- */
-
 enum DialogTokenType {
 	INT;
 	FLOAT;
@@ -47,6 +42,9 @@ class DialogToken {
 	}
 }
  
+/**
+ * Creates a DialogNodeSequence from an array of strings (effectively lines of code).
+ */
 class DialogParser {
 	private static var RESERVED_STRINGS:Array<String> = [
 		"global",

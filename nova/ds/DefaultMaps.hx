@@ -1,5 +1,7 @@
 package nova.ds;
 
+import haxe.Serializer;
+import haxe.Unserializer;
 import haxe.ds.StringMap;
 import haxe.ds.IntMap;
 import haxe.ds.HashMap;
@@ -11,8 +13,6 @@ import haxe.Constraints.IMap;
 /**
  * A map with a default value for missing elements.
  * You can optionally supply a function to generate missing values.
- * 
- * @author Nathan Pinsker
  */
 @:generic
 class DefaultIntMap<V> implements IMap<Int, V> {
@@ -51,6 +51,21 @@ class DefaultIntMap<V> implements IMap<Int, V> {
 	@:to
 	public inline function toIntMap():IntMap<V> {
 		return _map;
+	}
+	
+	// Serialization and deserialization will only work properly if
+	// 'defaultConstructor' is a constant function.
+	@:keep
+	function hxSerialize(s:Serializer) {
+		s.serialize(_map);
+		//s.serialize(defaultConstructor());
+	}
+	
+	@:keep
+	function hxUnserialize(u:Unserializer) {
+		_map = u.unserialize();
+		/*var result:V = u.unserialize();
+		this.defaultConstructor = function() { return result; };*/
 	}
 }
 
@@ -95,5 +110,20 @@ class DefaultStringMap<V> implements IMap<String, V> {
 	@:to
 	public inline function toStringMap():Map<String, V> {
 		return _map;
+	}
+	
+	// Serialization and deserialization will only work properly if
+	// 'defaultConstructor' is a constant function.
+	@:keep
+	function hxSerialize(s:Serializer) {
+		s.serialize(_map);
+		s.serialize(defaultConstructor());
+	}
+	
+	@:keep
+	function hxUnserialize(u:Unserializer) {
+		_map = u.unserialize();
+		var result:V = u.unserialize();
+		this.defaultConstructor = function() { return result; };
 	}
 }

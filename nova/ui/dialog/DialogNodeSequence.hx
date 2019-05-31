@@ -1,8 +1,7 @@
 package nova.ui.dialog;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * A sequence of dialog syntax nodes along with a pointer to track computation.
  */
 
 using nova.utils.ArrayUtils;

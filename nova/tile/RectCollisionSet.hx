@@ -3,8 +3,7 @@ import flixel.math.FlxRect;
 import nova.utils.Pair;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * Checks for collisions against a set of rectangles.
  */
 @:generic
 class RectCollisionSet<T> {

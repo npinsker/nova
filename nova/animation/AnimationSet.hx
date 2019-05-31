@@ -5,10 +5,6 @@ import nova.utils.Pair;
 using Lambda;
 using StringTools;
 
-/**
- * ...
- * @author Nathan Pinsker
- */
 class AnimationFrames {
 	public var name:String;
 	public var frames:Array<Int>;
@@ -22,6 +18,9 @@ class AnimationFrames {
 	}
 }
 
+/**
+  * A concise way of specifying sets of animations for a FlxSprite.
+  */
 class AnimationSet {
 	public var animations:Array<AnimationFrames>;
 	public var spriteSize:Pair<Int>;
@@ -31,6 +30,9 @@ class AnimationSet {
 		this.animations = animations;
 	}
 	
+  /**
+    * Adds the animations in this set to the supplied FlxSprite.
+    */
 	public function addToFlxSprite(sprite:FlxSprite) {
 		for (frame in animations) {
 			sprite.animation.add(frame.name, frame.frames, frame.frameRate, frame.looped);

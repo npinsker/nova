@@ -3,8 +3,7 @@ import flixel.math.FlxPoint;
 import flixel.math.FlxRect;
 
 /**
- * ...
- * @author Nathan Pinsker
+ * Utilities for working with 2D geometry.
  */
 class GeomUtils {
 	public static function expand(rect:FlxRect, amt:Float):FlxRect {
@@ -19,6 +18,10 @@ class GeomUtils {
 		return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
 	}
 	
+  /**
+    * Finds the minimum distance from the supplied point to the given rectangle.
+    * If the point is inside the rectangle, this value is zero.
+    */
 	public static function distanceToPoint(rect:FlxRect, point:Pair<Float>, norm:Int = 1):Float {
 		var xd:Float = 0, yd:Float = 0;
 		if (point.x < rect.x) {
@@ -39,9 +42,10 @@ class GeomUtils {
 		return xd + yd;
 	}
 	
+  /**
+    * Finds the point on the line p1 -> p2 that is closest to the supplied point.
+    */
 	public static function pointOnLine(p1:Pair<Float>, p2:Pair<Float>, a:Pair<Float>):Pair<Float> {
-		// Finds the point on the line p1 -> p2 that is closest to the point 'a'.
-		
 		if (p1.y == p2.y) {
 			return [a.x, p1.y];
 		}

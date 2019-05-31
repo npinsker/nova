@@ -3,9 +3,8 @@ import flixel.math.FlxRect;
 import nova.utils.Pair;
 
 /**
- * ...
- * @author Nathan Pinsker
- */
+  * Detects collisions across different types of collision sets.
+  */
 @:generic
 class CollisionManager<TType, RType> {
 	public var tileCollisionSet:TileCollisionSet<TType> = null;

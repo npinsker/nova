@@ -1,8 +1,8 @@
 package nova.pubsub;
 
 /**
- * @author Nathan Pinsker
- */
+  * Not used.
+  */
 class Publisher<T> {
 	public var channel:String;
 	public var ref:T;
