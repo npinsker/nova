@@ -11,6 +11,7 @@ import openfl.geom.Rectangle;
  */
 
 class TileUtils {
+  @:deprecated
 	public static function nudgeIntoBounds<T>(tiles:Array<Array<T>>, rect:FlxRect,
 	                                          testCollisionFn:T -> Bool,
 	                                          offset:Pair<Float>,
@@ -72,7 +73,8 @@ class TileUtils {
 		}
 		return [nudgeX, nudgeY];
 	}
-	public static function horizontalNudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect):Float {
+  @:deprecated
+	public static function horizontalNudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect, ?maxNudge:Float = 6):Float {
 		var canNudgeLeft:Bool = true;
 		var canNudgeRight:Bool = true;
 		for (collisionRect in collisionRects) {
@@ -81,8 +83,8 @@ class TileUtils {
 				var candidateLeft = rect.x + rect.width - collisionRect.x;
 				var candidateRight = collisionRect.x + collisionRect.width - rect.x;
 				
-				if (candidateLeft > 10) canNudgeLeft = false;
-				if (candidateRight > 10) canNudgeRight = false;
+				if (candidateLeft > maxNudge) canNudgeLeft = false;
+				if (candidateRight > maxNudge) canNudgeRight = false;
 			}
 		}
 		var maxAmt:Float = 100;
@@ -121,7 +123,8 @@ class TileUtils {
 		return 0;
 	}
 	
-	public static function verticalNudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect):Float {
+  @:deprecated
+	public static function verticalNudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect, ?maxNudge:Float = 6):Float {
 		var canNudgeUp:Bool = true;
 		var canNudgeDown:Bool = true;
 		for (collisionRect in collisionRects) {
@@ -130,8 +133,8 @@ class TileUtils {
 				var candidateUp = rect.y + rect.height - collisionRect.y;
 				var candidateDown = collisionRect.y + collisionRect.height - rect.y;
 				
-				if (candidateUp > 10) canNudgeUp = false;
-				if (candidateDown > 10) canNudgeDown = false;
+				if (candidateUp > maxNudge) canNudgeUp = false;
+				if (candidateDown > maxNudge) canNudgeDown = false;
 			}
 		}
 		var maxAmt:Float = 100;
@@ -170,6 +173,7 @@ class TileUtils {
 		return 0;
 	}
 	
+  @:deprecated
 	public static function nudgeOutOfObjects(collisionRects:Array<FlxRect>, rect:FlxRect):Pair<Float> {
 		var nudgeX:Float = 0;
 		var nudgeY:Float = 0;

@@ -2,12 +2,13 @@
   "name": "nova",
   "url" : "https://github.com/npinsker/nova",
   "license": "MIT",
-  "tags": ["game", "openfl", "flash", "neko", "flixel"],
+  "tags": ["game", "openfl", "flash", "flixel"],
   "description": "Nova is a set of game development tools on top of Flixel to supercharge common tasks.",
-  "version": "0.3.6",
-  "releasenote": "Improvements to InputController and Director. Moved some packages around. Much more documentation.",
+  "version": "0.5.3",
+  "releasenote": "Add Speedy class and auto-updating width and height for FlxLocalSprite fields.",
   "contributors": ["npinsker"],
   "dependencies": {
-    "flixel": ""
+    "flixel": "",
+    "yaml": ""
   }
 }

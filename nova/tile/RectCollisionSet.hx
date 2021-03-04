@@ -6,11 +6,13 @@ import nova.utils.Pair;
  * Checks for collisions against a set of rectangles.
  */
 @:generic
-class RectCollisionSet<T> {
+class RectCollisionSet<T> implements CollisionSet {
+    // TODO: use an Int -> Object map for objects instead of an array
 	public var objects:Array<T>;
 	public var objectToRect:T -> FlxRect;
 	public var rects:Array<FlxRect>;
 	public var subdivideDims:Pair<Int>;
+    public var collisionHook:Array<T> -> Void = null;
 	
 	public var tileToObjects:Map<Int, Array<Int>>;
 	public var X_MULT:Int = 64333;
@@ -25,7 +27,40 @@ class RectCollisionSet<T> {
 	
 	public function add(object:T) {
 		objects.push(object);
-		rects.push(objectToRect(object));
+    
+		var rect:FlxRect = objectToRect(object);
+    var startX:Int = Math.floor(rect.x / subdivideDims.x - 0.01);
+		var endX:Int = Math.ceil((rect.x + rect.width) / subdivideDims.x + 0.01);
+		var startY:Int = Math.floor(rect.y / subdivideDims.y - 0.01);
+		var endY:Int = Math.ceil((rect.y + rect.height) / subdivideDims.y + 0.01);
+			
+		for (x in startX...endX + 1) {
+			for (y in startY...endY + 1) {
+				var coord:Int = X_MULT * x + y;
+				if (!tileToObjects.exists(coord)) {
+					tileToObjects.set(coord, new Array<Int>());
+				}
+				tileToObjects.get(coord).push(objects.length - 1);
+			}
+		}
+	}
+	
+	public function remove(object:T) {
+        var idx = objects.indexOf(object);
+		objects.remove(object);
+		
+		var rect:FlxRect = objectToRect(object);
+        var startX:Int = Math.floor(rect.x / subdivideDims.x - 0.01);
+		var endX:Int = Math.ceil((rect.x + rect.width) / subdivideDims.x + 0.01);
+		var startY:Int = Math.floor(rect.y / subdivideDims.y - 0.01);
+		var endY:Int = Math.ceil((rect.y + rect.height) / subdivideDims.y + 0.01);
+			
+		for (x in startX...endX + 1) {
+			for (y in startY...endY + 1) {
+				var coord:Int = X_MULT * x + y;
+				tileToObjects.get(coord).remove(idx);
+			}
+		}
 	}
 	
 	public function refresh() {
@@ -52,9 +87,15 @@ class RectCollisionSet<T> {
 			}
 		}
 	}
+
+  public function clear() {
+		for (k in tileToObjects.keys()) {
+			tileToObjects.remove(k);
+		}
+    objects = [];
+  }
 	
-	public function getOverlappingObjects(rect:FlxRect,
-										  ?overrideCollisionFn:T -> Bool = null):Array<T> {
+	public function getOverlappingObjects(rect:FlxRect):Array<CollisionShape> {
 		// Returns the (x, y) positions of all tiles that overlap the given rectangle.
 		// Supplying an 'offset' parameter of (A, B) has the same effect as translating the rectangle
 		// by (-A, -B).
@@ -78,17 +119,11 @@ class RectCollisionSet<T> {
 				}
 			}
 		}
-		return returnArray.map(function(ind) { return objects[ind]; });
-	}
-	
-	public function getOverlappingObjectsPoint(point:Pair<Float>,
-											   ?overrideCollisionFn:T -> Bool = null):Array<T> {
-		// Returns the (x, y) positions of all tiles that overlap the given point.
-		return getOverlappingObjects(new FlxRect(point.x, point.y, 0, 0), overrideCollisionFn);
-	}
-	
-	public function getRectanglesForNudge(rect:FlxRect,
-										  ?overrideCollisionFn:T -> Bool = null):Array<FlxRect> {
-		return getOverlappingObjects(rect, overrideCollisionFn).map(objectToRect);
+        var collisions = returnArray.map(function(ind) { return objects[ind]; });
+        if (this.collisionHook != null) {
+            collisionHook(collisions);
+        }
+
+		return cast returnArray.map(function(ind) { return new CollisionShape.CollisionRect(objectToRect(objects[ind])); });
 	}
 }

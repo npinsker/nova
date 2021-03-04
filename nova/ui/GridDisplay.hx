@@ -100,21 +100,33 @@ class GridDisplay extends FlxLocalSprite implements Focusable {
 		if (InputController.justPressed(Button.LEFT)) {
 			if (focus.x > 0) {
 				focusTo([focus.x - 1, focus.y]);
+        if (Reflect.hasField(options, 'changeSelectionCallback')) {
+          options.changeSelectionCallback([focus.x, focus.y]);
+        }
 			}
 		}
 		if (InputController.justPressed(Button.RIGHT)) {
 			if (focus.x < grid[focus.y].length - 1) {
 				focusTo([focus.x + 1, focus.y]);
+        if (Reflect.hasField(options, 'changeSelectionCallback')) {
+          options.changeSelectionCallback([focus.x, focus.y]);
+        }
 			}
 		}
 		if (InputController.justPressed(Button.UP)) {
 			if (focus.y > 0) {
 				focusTo([focus.x, focus.y - 1]);
+        if (Reflect.hasField(options, 'changeSelectionCallback')) {
+          options.changeSelectionCallback([focus.x, focus.y]);
+        }
 			}
 		}
 		if (InputController.justPressed(Button.DOWN)) {
 			if (focus.y < grid.length - 1) {
 				focusTo([focus.x, focus.y + 1]);
+        if (Reflect.hasField(options, 'changeSelectionCallback')) {
+          options.changeSelectionCallback([focus.x, focus.y]);
+        }
 			}
 		}
 	}

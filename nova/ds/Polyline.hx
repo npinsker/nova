@@ -1,7 +1,5 @@
 package nova.ds;
 
-import flixel.math.FlxPoint;
-
 import nova.utils.ArrayUtils;
 import nova.utils.Pair;
 
@@ -21,7 +19,7 @@ enum PolylineConnectStyle {
  * Represents a polyline on the 2D plane, specified by the supplied points.
  * The points must be supplied in increasing order of x-value.
  */
-class Polyline {
+class Polyline implements RealValuedFunction {
   public var points:Array<Pair<Float>>;
   public var connectStyle:PolylineConnectStyle;
 

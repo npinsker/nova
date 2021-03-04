@@ -72,6 +72,7 @@ class InputController {
   #end
 
   private var _disabled:Array<Button>;
+  private var _simulatedPresses:Array<Button>;
 	
 	private function new() {
     #if (desktop || web)
@@ -84,6 +85,7 @@ class InputController {
     #end
 
     _disabled = [];
+    _simulatedPresses = [];
 	}
 	
 	public static function addKeyMapping(keyCode:FlxKey, button:Button) {
@@ -114,9 +116,13 @@ class InputController {
   }
 	
 	public static function justPressed(button:Button) {
-    if (instance._disabled.indexOf(button) != -1) {
-      return false;
-    }
+        if (instance._disabled.indexOf(button) != -1) {
+          return false;
+        }
+
+        if (instance._simulatedPresses.indexOf(button) != -1) {
+            return true;
+        }
 
 		#if (desktop || web)
 		if (instance._keyboardInputMap.exists(button)) {
@@ -212,7 +218,12 @@ class InputController {
     instance._disabled.push(button);
   }
 
+  public static function simulatePress(button:Button) {
+    instance._simulatedPresses.push(button);
+  }
+
   public static function update() {
     instance._disabled = [];
+    instance._simulatedPresses = [];
   }
 }

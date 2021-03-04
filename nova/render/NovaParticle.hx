@@ -9,20 +9,12 @@ import flixel.util.helpers.FlxRange;
 import nova.render.FlxLocalSprite.LocalSpriteWrapper;
 import nova.utils.Pair;
 
-/**
- * This is a simple particle class that extends the default behavior
- * of `FlxSprite` to have slightly more specialized behavior
- * common to many game scenarios. You can override and extend this class
- * just like you would FlxSprite. While FlxEmitter
- * used to work with just any old sprite, it now requires a
- * `FlxParticle` based class.
-*/
 class NovaParticle extends LocalSpriteWrapper {
 	public var lifespan:Float = 1;
 	public var markedForDeath:Bool = false;
 
 	public var age(default, null):Float = 0;
-	public var velocityMultiplier:Pair<Float> = [1, 1];
+    public var v:Pair<Float> = [0, 0];
 	public var alphaRange:Pair<Float> = [1, 1];
 	public var onUpdate:NovaParticle -> Void = null;
 
@@ -36,7 +28,6 @@ class NovaParticle extends LocalSpriteWrapper {
 	@:keep
 	public function new(sprite:FlxSprite) {
 		super(sprite);
-		exists = false;
 	}
 
 	override public function destroy():Void {
@@ -46,6 +37,14 @@ class NovaParticle extends LocalSpriteWrapper {
 	public function get_animation():FlxAnimationController {
 		return _sprite.animation;
 	}
+
+    public function setSolidColor(rgb:Int) {
+        var c = FlxColor.fromInt(rgb);
+        this._sprite.setColorTransform(
+            0, 0, 0, 1,
+            c.red, c.green, c.blue
+        );
+    }
 	
 	override public function update(elapsed:Float):Void {
 		if (age < lifespan) {

@@ -22,7 +22,7 @@ class ArrayUtils {
 	}
 	
 	public static function max<K:Float>(a:Array<K>):K {
-		return foldFn(a, function(x, y) { return (x < y ? x : y); } );
+		return foldFn(a, function(x, y) { return (x > y ? x : y); } );
 	}
 	
 	public static function minBy<T>(a:Array<T>, cmpFn:T -> Float):T {

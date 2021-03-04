@@ -106,6 +106,16 @@ abstract Pair<K:Float>(Array<K>) {
 	public function subtract(rhs:Array<K>):Pair<K> {
 		return new Pair<K>(this[0] - rhs[0], this[1] - rhs[1]);
 	}
+	
+	@:op(A - B)
+	public static function subtractFloatPairOnLeft(p:Pair<Float>, rhs:Array<Int>):Pair<Float> {
+		return new Pair<Float>(p.x - rhs[0], p.y - rhs[1]);
+	}
+	
+	@:op(A - B)
+	public static function subtractFloatPairOnRight(p:Pair<Int>, rhs:Array<Float>):Pair<Float> {
+		return new Pair<Float>(p.x - rhs[0], p.y - rhs[1]);
+	}
 
 	@:op(A * B) @:commutative
 	public static function multiplyByNumber<K:Float>(p:Pair<K>, rhs:K):Pair<K> {

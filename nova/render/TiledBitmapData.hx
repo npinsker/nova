@@ -24,7 +24,7 @@ class TiledBitmapData {
 	public function new(graphicAsset:FlxGraphicAsset, tileWidth:Int = 0, tileHeight:Int = 0, ?transform:BitmapData -> BitmapData = null) {
 		graphic = FlxG.bitmap.add(graphicAsset);
 		if (graphic == null) {
-			return null;
+			return;
 		}
 
 		this.tileWidth = (tileWidth == 0 ? graphic.bitmap.width : tileWidth);
@@ -44,12 +44,10 @@ class TiledBitmapData {
 	public function getTile(coords:OneOfTwo<Int, Pair<Int>>):BitmapData {
 		var pairCoords:Pair<Int> = BitmapDataUtils.toIntPairFn(numColumns)(coords);
 
-		var tile:BitmapData = new BitmapData(tileWidth, tileHeight);
-		tile.copyPixels(graphic.bitmap, new Rectangle(pairCoords.x * tileWidth,
-		                                              pairCoords.y * tileHeight,
-													  tileWidth,
-													  tileHeight),
-				        new Point(0, 0));
+		var tile:BitmapData = new BitmapData(tileWidth, tileHeight, true, 0);
+		if (pairCoords.x >= 0) {
+			tile.copyPixels(graphic.bitmap, getTileRect(coords), new Point(0, 0));
+		}
 
 		if (transform == null) {
 			return tile;
@@ -57,24 +55,45 @@ class TiledBitmapData {
 		return transform(tile);
 	}
 
+  /**
+	 * Returns the rectangle corresponding to the requested tile in the overall tilemap.
+   * If you want to copy a tile to another BitmapData object, this method
+   * can be used in place of `getTile` to cut the number of copy operations.
+	 * @param	coords Either an integer or a pair of integers designating the tile.
+	 * If an integer is supplied, then it will be parsed as a tile by numbering the tiles in book-reading order.
+	 * @return A `Rectangle` corresponding to the requested tile.
+	 */
+  public function getTileRect(coords:OneOfTwo<Int, Pair<Int>>):Rectangle {
+		var pairCoords:Pair<Int> = BitmapDataUtils.toIntPairFn(numColumns)(coords);
+
+    return new Rectangle(pairCoords.x * tileWidth,
+                         pairCoords.y * tileHeight,
+                         tileWidth,
+                         tileHeight);
+  }
+
 	/**
 	 * 
 	 * @param	coords An array of tiles to stitch into a BitmapData. Each coordinate is specified
 	 * in the same way as in `getTile`.
+	 * @param	columns The number of columns in the resulting BitmapData.
 	 * @return A BitmapData consisting of all requested tiles, horizontally stitched into a single
 	 * `BitmapData` object having dimensions `(tileWidth * coords.length, tileHeight)`.
 	 */
-	public function stitchTiles(coords:Array<OneOfTwo<Int, Pair<Int>>>):BitmapData {
+	public function stitchTiles(coords:Array<OneOfTwo<Int, Pair<Int>>>, ?columns:Int = 0):BitmapData {
 		var pairCoords:Array<Pair<Int>> = coords.map(BitmapDataUtils.toIntPairFn(numColumns));
 
-		var tile:BitmapData = new BitmapData(coords.length * tileWidth, tileHeight);
+		var _columns:Int = (columns != 0 ? columns : coords.length);
+		var tile:BitmapData = new BitmapData(_columns * tileWidth, tileHeight * Std.int(coords.length / _columns), true, 0);
 
 		for (i in 0...coords.length) {
-			tile.copyPixels(graphic.bitmap, new Rectangle(pairCoords[i].x * tileWidth,
-														  pairCoords[i].y * tileHeight,
-														  tileWidth,
-														  tileHeight),
-							new Point(i * tileWidth, 0));
+			if (pairCoords[i].x >= 0) {
+				tile.copyPixels(graphic.bitmap, new Rectangle(pairCoords[i].x * tileWidth,
+															  pairCoords[i].y * tileHeight,
+															  tileWidth,
+															  tileHeight),
+								new Point((i % _columns) * tileWidth, Std.int(i / _columns) * tileHeight));
+			}
 		}
 		if (transform == null) {
 			return tile;

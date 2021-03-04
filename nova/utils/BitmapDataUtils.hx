@@ -21,9 +21,11 @@ class BitmapDataUtils {
 	 * @param	scaleY The amount to the scale the BitmapData by vertically.
 	 * @return A function that scales an input BitmapData by `(scaleX, scaleY)`.
 	 */
-	public static function scaleFn(scaleX:Int, scaleY:Int):BitmapData -> BitmapData {
+	public static function scaleFn(scaleX:Float, scaleY:Float):BitmapData -> BitmapData {
 		return function(bitmapData:BitmapData) {
-			var newBitmapData:BitmapData = new BitmapData(bitmapData.width * scaleX, bitmapData.height * scaleY, true, 0);
+			var newBitmapData:BitmapData = new BitmapData(Std.int(bitmapData.width * scaleX),
+                                                          Std.int(bitmapData.height * scaleY),
+                                                          true, 0);
 			var mx:Matrix = new Matrix(scaleX, 0, 0, scaleY);
 			newBitmapData.draw(bitmapData, mx);
 
@@ -113,15 +115,14 @@ class BitmapDataUtils {
 		var resultBitmapData:BitmapData = new BitmapData(targetWidth, bitmapData.height, true, 0);
 		
 		var middleWidth:Int = bitmapData.width - 2 * borderWidth;
-		
-		var middleBitmapData:BitmapData = new BitmapData(middleWidth, bitmapData.height, true, 0);
-		middleBitmapData.copyPixels(bitmapData, new Rectangle(borderWidth, 0, middleWidth, bitmapData.height), new Point(0, 0));
-		
 		resultBitmapData.copyPixels(bitmapData, new Rectangle(0, 0, borderWidth, bitmapData.height), new Point(0, 0));
 		resultBitmapData.copyPixels(bitmapData, new Rectangle(borderWidth + middleWidth, 0, borderWidth, bitmapData.height),
 		                            new Point(targetWidth - borderWidth, 0));
 		
-		var mx:Matrix = new Matrix((targetWidth - 2 * borderWidth) / (middleWidth), 0, 0, 1);
+    var middleWidthToCopy = Std.int(Math.min(middleWidth, targetWidth - 2 * borderWidth));
+		var middleBitmapData:BitmapData = new BitmapData(middleWidthToCopy, bitmapData.height);
+		middleBitmapData.copyPixels(bitmapData, new Rectangle(borderWidth, 0, middleWidthToCopy, bitmapData.height), new Point(0, 0));
+		var mx:Matrix = new Matrix((targetWidth - 2 * borderWidth) / (middleWidthToCopy), 0, 0, 1);
 		mx.translate(borderWidth, 0);
 		resultBitmapData.draw(middleBitmapData, mx);
 		return resultBitmapData;
@@ -134,15 +135,15 @@ class BitmapDataUtils {
 		var resultBitmapData:BitmapData = new BitmapData(bitmapData.width, targetHeight, true, 0);
 		
 		var middleHeight:Int = bitmapData.height - 2 * borderHeight;
-		
-		var middleBitmapData:BitmapData = new BitmapData(bitmapData.width, middleHeight);
-		middleBitmapData.copyPixels(bitmapData, new Rectangle(0, borderHeight, bitmapData.width, middleHeight), new Point(0, 0));
-		
+
 		resultBitmapData.copyPixels(bitmapData, new Rectangle(0, 0, bitmapData.width, borderHeight), new Point(0, 0));
 		resultBitmapData.copyPixels(bitmapData, new Rectangle(0, borderHeight + middleHeight, bitmapData.width, borderHeight),
 		                            new Point(0, targetHeight - borderHeight));
 		
-		var mx:Matrix = new Matrix(1, 0, 0, (targetHeight - 2 * borderHeight) / (middleHeight));
+    var middleHeightToCopy = Std.int(Math.min(middleHeight, targetHeight - 2 * borderHeight));
+		var middleBitmapData:BitmapData = new BitmapData(bitmapData.width, middleHeightToCopy);
+		middleBitmapData.copyPixels(bitmapData, new Rectangle(0, borderHeight, bitmapData.width, middleHeightToCopy), new Point(0, 0));
+		var mx:Matrix = new Matrix(1, 0, 0, (targetHeight - 2 * borderHeight) / middleHeightToCopy);
 		mx.translate(0, borderHeight);
 		resultBitmapData.draw(middleBitmapData, mx);
 		return resultBitmapData;
@@ -234,6 +235,9 @@ class BitmapDataUtils {
 		}
 		return function(id:OneOfTwo<Int, Pair<Int>>):Pair<Int> {
 			if (Std.is(id, Int)) {
+				if (cast(id, Int) < 0) {
+					return [ -1, -1];
+				}
 				return [id % columns, Std.int(id / columns)];
 			}
 			return id;

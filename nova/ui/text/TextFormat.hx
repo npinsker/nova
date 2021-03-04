@@ -13,6 +13,8 @@ typedef TextFormat = {
 	@:optional var font:String;
 	@:optional var size:Float;
 	@:optional var color:Int;
+    @:optional var effect:String;
+    @:optional var effectColor:Int;
 };
 
 class TextFormatUtils {
@@ -23,9 +25,13 @@ class TextFormatUtils {
 		var font:String = format.font;
 		var size:Int = Std.int(format.size != null ? format.size : DEFAULT_FONT_SIZE);
 		var color:FlxColor = (format.color != null ? FlxColor.fromInt(format.color) : DEFAULT_COLOR);
+        var effect:FlxTextBorderStyle = (format.effect == 'outline' ? OUTLINE :
+                                         format.effect == 'shadow' ? SHADOW : null);
+        var effectColor:FlxColor = (format.effectColor != null ? FlxColor.fromInt(format.effectColor) : FlxColor.TRANSPARENT);
 		
 		if (Std.is(text, FlxText)) {
-			cast(text, FlxText).setFormat(font, size, color);
+			cast(text, FlxText).setFormat(font, size, color, null, effect, format.effectColor);
+            cast(text, FlxText).borderSize = 4;
 		} else {
 			var tfText:TextField = cast(text, TextField);
 

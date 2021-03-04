@@ -31,6 +31,8 @@ class GridDisplayBox extends FlxLocalSprite {
 	public var options:Dynamic;
 	public var selectedColor:Int;
 	public var inAnimation:Bool = false;
+
+    public var itemSprite:LocalSpriteWrapper;
 	public static var DEFAULT_SELECTED_COLOR:Int = 0x72AAEA;
 	
 	public function new(bitmapData:BitmapData, item:Dynamic, options:Dynamic) {
@@ -54,11 +56,10 @@ class GridDisplayBox extends FlxLocalSprite {
 		add(bg);
 		
 		var fg = new FlxSprite();
-		fg.loadGraphic(bitmapData);
-		var lbd = new LocalSpriteWrapper(fg);
-		add(lbd);
-		lbd.x = (width - bitmapData.width) / 2;
-		lbd.y = (height - bitmapData.height) / 2;
+        itemSprite = LocalWrapper.fromGraphic(bitmapData);
+		add(itemSprite);
+		itemSprite.x = (width - bitmapData.width) / 2;
+		itemSprite.y = (height - bitmapData.height) / 2;
 		
 		var cs = new FlxSprite();
 		cs.loadGraphic(BitmapDataUtils.getSpriteFromSheetFn(Assets.getBitmapData('assets/images/bobs.png'), [20, 20])([0, 0]));

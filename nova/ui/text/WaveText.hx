@@ -26,14 +26,16 @@ class WaveText extends RichText {
 		
 		for (i in 0...text.length) {
 			var boundaries:Rectangle = tempTextField.getCharBoundaries(i);
+            if (boundaries == null) continue;
 			var wrapper:LocalWrapper<FlxText> = new LocalWrapper(new FlxText(0, 0, boundaries.width + 1, text.charAt(i), 24));
 			wrapper.x = boundaries.x;
+      wrapper._sprite.textField.width += 20;
 			if (textFormat != null) {
 				TextFormatUtils.setTextFormat(wrapper._sprite, textFormat);
 			}
 			
-			FlxTween.tween(wrapper, {y: -8}, 0.2,
-						   {ease: FlxEase.sineInOut, type: 4, startDelay: 0.1 * i});
+			FlxTween.tween(wrapper, {y: -12}, 0.3,
+						   {ease: FlxEase.sineInOut, type: 4, startDelay: 2.6 * i});
 			add(wrapper);
 		}
 	}

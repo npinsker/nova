@@ -17,8 +17,8 @@ class NineSliceBitmapGen {
 	}
 	
 	public function generateBitmap(dimensions:Pair<Int>) {
-		var borderWidth:Int = Std.int(bitmapData.width / 2) - centerRect.x;
-		var borderHeight:Int = Std.int(bitmapData.height / 2) - centerRect.y;
+		var borderWidth:Int = Std.int((bitmapData.width - centerRect.x) / 2);
+		var borderHeight:Int = Std.int((bitmapData.height - centerRect.y) / 2);
 		var widthStretched:BitmapData = BitmapDataUtils.horizontalStretchCenter(this.bitmapData, borderWidth, dimensions.x);
 		return BitmapDataUtils.verticalStretchCenter(widthStretched, borderHeight, dimensions.y);
 	}

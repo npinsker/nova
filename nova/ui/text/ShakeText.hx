@@ -30,8 +30,10 @@ class ShakeText extends RichText {
 		
 		for (i in 0...text.length) {
 			var boundaries:Rectangle = tempTextField.getCharBoundaries(i);
+            if (boundaries == null) continue;
 			var wrapper:LocalWrapper<FlxText> = new LocalWrapper(new FlxText(0, 0, boundaries.width + 1, text.charAt(i), 24));
 			wrapper.x = boundaries.x;
+      wrapper._sprite.textField.width += 20;
 			originalX.push(boundaries.x);
 			if (textFormat != null) {
 				TextFormatUtils.setTextFormat(wrapper._sprite, textFormat);
@@ -45,7 +47,7 @@ class ShakeText extends RichText {
 		for (i in 0...children.length) {
 			var child:FlxLocalSprite = children[i];
 			child.x = originalX[i] + Std.random(Std.int(2*SHAKE_INTENSITY + 1)) - SHAKE_INTENSITY;
-			child.y = Std.random(Std.int(2*SHAKE_INTENSITY + 1)) - SHAKE_INTENSITY;
+			child.y = Std.random(Std.int(2 * SHAKE_INTENSITY + 1)) - SHAKE_INTENSITY;
 		}
 		
 		super.update(elapsed);

@@ -1,7 +1,16 @@
 package nova.ui.dialog;
+
 import nova.render.FlxLocalSprite;
 import nova.ui.text.ShakeText;
 import nova.ui.text.WaveText;
+
+import nova.ui.dialog.DialogBox.DialogBoxFlag;
+
+
+typedef TextWithFlags = {
+	var text:String;
+  var flags:Array<DialogBoxFlag>;
+}
 
 /**
  * Common utilities useful for creating rich dialog boxes.
@@ -38,64 +47,54 @@ class DialogBoxAddons {
 		return new WaveText(text);
 	}
 	
-	public static function parseTextFlags(textSpecificFlags:Map<String, String -> FlxLocalSprite>, genericFlags:Map<String, DialogBox -> Void>) {
-		return function(db:DialogBox, text:String):String {
-			var transformedText:String = '';
-			var i = 0;
-			var inFlag:Bool = false;
-			var anchor:Int = 0;
-			var offset:Int = 0;
-			db.flags = new Array<DialogBox.DialogBoxFlag>();
-			for (i in 0...text.length) {
-				if (!inFlag) {
-					if (text.charAt(i) == '[') {
-						inFlag = true;
-						anchor = i + 1;
-					} else {
-						transformedText += text.charAt(i);
-					}
+	public static function parseTextFlags(text:String):TextWithFlags {
+    var transformedText:String = '';
+		var inFlag:Bool = false;
+		var anchor:Int = 0;
+    var anchorPosition:Int = 0;
+    var flags:Array<DialogBoxFlag> = [];
+		for (i in 0...text.length) {
+			if (!inFlag) {
+				if (text.charAt(i) == '[') {
+					inFlag = true;
+					anchor = i + 1;
+          anchorPosition = transformedText.length;
 				} else {
-					if (text.charAt(i) == ']') {
-						var builtStr:String = text.substring(anchor, i);
-						if (textSpecificFlags.exists(builtStr)) {
-							db.flags.push({name: builtStr, position: anchor - 1 - offset, flagAction: textSpecificFlags.get(builtStr), type: START});
-							offset += builtStr.length + 2;
-							inFlag = false;
-						} else if (builtStr.charAt(0) == '/' && textSpecificFlags.exists(builtStr.substring(1))) {
-							var flagName = builtStr.substring(1);
-							db.flags.push({name: flagName, position: anchor - 1 - offset, flagAction: textSpecificFlags.get(flagName), type: END});
-							offset += builtStr.length + 2;
-							inFlag = false;
-						} else if (genericFlags.exists(builtStr)) {
-							if (builtStr.charAt(0) == '/') {
-								var flagName = builtStr.substring(1);
-								if (text.indexOf('[' + flagName + ']') != -1) {
-									db.flags.push({name: flagName, position: anchor - 1 - offset, genericAction: genericFlags.get(flagName), type: END});
-								}
-							} else {
-								var typeToAssign:DialogBox.FlagType = POINT;
-								if (text.indexOf('[/' + builtStr + ']') != -1) {
-									typeToAssign = START;
-								}
-								db.flags.push({name: builtStr, position: anchor - 1 - offset, genericAction: genericFlags.get(builtStr), type: typeToAssign});
-							}
-							offset += builtStr.length + 2;
-							inFlag = false;
-						}
-					}
+					transformedText += text.charAt(i);
+				}
+			} else {
+				if (text.charAt(i) == ']') {
+          flags.push({name: text.substring(anchor, i), position: anchorPosition});
+          inFlag = false;
 				}
 			}
-			return transformedText;
 		}
+		return {text: transformedText, flags: flags};
 	}
 	
 	public static var parseCommonTextFlags:DialogBox -> String -> String = function(db:DialogBox, text:String) {
-		return parseTextFlags([
-			'wave'  => function(t) { return new WaveText(t, db.options.textFormat); },
-			'shake' => function(t) { return new ShakeText(t, db.options.textFormat); },
-		],
-		[
-			'delay' => function(db) { db.pause = 30; },
-		])(db, text);
+    var parsedFlags = parseTextFlags(text);
+    db.flags = parsedFlags.flags;
+    var newColors:Map<String, Int> = [
+      'red' => 0xFFFF0000,
+      'green' => 0xFF00CC00,
+      'blue' => 0xFF0000CC,
+      'black' => 0xFF000000,
+      'white' => 0xFFFFFFFF,
+      'orange' => 0xFFFFA500,
+      'yellow' => 0xFFFFFF00,
+      'pink' => 0xFFFFC0CB,
+      'brown' => 0xFF8B4513,
+    ];
+    for (color in newColors.keys()) {
+        if (!db.colors.exists(color)) {
+            db.colors.set(color, newColors.get(color));
+        }
+    }
+    db.creationClasses = [
+      'wave' => WaveText,
+      'shake' => ShakeText,
+    ];
+    return parsedFlags.text;
 	};
 }

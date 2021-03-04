@@ -14,6 +14,8 @@ enum SyntaxNodeType {
 	LABEL;
 	VARIABLE_ASSIGN;
 	IF;
+    ELSE;
+    ELSEIF;
 	FUNCTION;
 	JUMP;
 	EMIT;
@@ -32,7 +34,7 @@ class DialogSequencePointer {
 		this.index = index;
 	}
 	
-	public function step() {
+	public function nextInstruction() {
 		while (true) {
 			index++;
 			if (index < sequence.length) {
@@ -60,12 +62,14 @@ class DialogSequencePointer {
 class DialogSyntaxNode {
 	public var type:SyntaxNodeType;
 	public var value:Dynamic;
+	public var auxValue:Dynamic;
 	public var child:DialogNodeSequence;
 	
 	public function new(type:SyntaxNodeType, value:Dynamic, ?child:DialogNodeSequence = null) {
 		this.type = type;
 		this.value = value;
 		this.child = child;
+    this.auxValue = null;
 	}
 	
 	public static function spaces(num:Int):String {
@@ -105,6 +109,10 @@ class DialogNodeSequence {
 	public function toString():String {
 		return _printableForm().join('\n');
 	}
+  
+  public function push(node:DialogSyntaxNode):Int {
+    return sequence.push(node);
+  }
 	
 	public function _printableForm(indent:Int = 0):Array<String> {
 		var r:Array<String> = [];

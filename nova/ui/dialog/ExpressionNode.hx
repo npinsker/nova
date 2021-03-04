@@ -22,6 +22,7 @@ enum ExpressionNodeType {
 	GREATER_THAN;
 	LESS_THAN_EQUALS;
 	GREATER_THAN_EQUALS;
+    NOT_EQUALS;
 }
 
 /**
@@ -43,7 +44,7 @@ class ExpressionNode {
 	}
 	
 	public function evaluate(variableMap:Map<String, Dynamic>):ExpressionNode {
-		if (type == STRING || type == INTEGER) {
+		if (type == STRING || type == INTEGER || type == FLOAT) {
 			return this;
 		}
 		if (type == VARIABLE) {
@@ -62,12 +63,12 @@ class ExpressionNode {
 			return null;
 		}
 		if (type == FUNCTION) {
-			if (!variableMap.exists(value)) {
+			if (!variableMap.exists(value.name)) {
 				trace("Function " + value + " -- not found in variableMap! (defaulting to FALSE)");
 				return FALSE;
 			}
-			var fn = variableMap.get(value);
-			var result = fn(leftChild.evaluate(variableMap).value);
+			var fn = variableMap.get(value.name);
+			var result = fn(value.args);
 			if (Std.is(result, Int)) {
 				return new ExpressionNode(INTEGER, cast(result, Int));
 			} else if (Std.is(result, Float)) {
@@ -109,7 +110,7 @@ class ExpressionNode {
 			return null;
 		}
 		if (type == EQUALS || type == LESS_THAN || type == GREATER_THAN ||
-        type == LESS_THAN_EQUALS || type == GREATER_THAN_EQUALS) {
+        type == LESS_THAN_EQUALS || type == GREATER_THAN_EQUALS || type == NOT_EQUALS) {
 			if (leftChild == null || rightChild == null) {
 				trace("Attempt to evaluate comparison op with a null child!");
 				return null;
@@ -124,6 +125,10 @@ class ExpressionNode {
 					return FALSE;
 				}
 			}
+
+            if (leftResult == null || rightResult == null) {
+                trace("Something went wrong with evaluating operands " + leftChild + " and " + rightChild);
+            }
 			
 			if (type == EQUALS) {
 				return (leftResult.value == rightResult.value ? TRUE : FALSE);
@@ -140,6 +145,9 @@ class ExpressionNode {
 			if (type == GREATER_THAN_EQUALS) {
 				return (leftResult.value >= rightResult.value ? TRUE : FALSE);
 			}
+            if (type == NOT_EQUALS) {
+				return (leftResult.value != rightResult.value ? TRUE : FALSE);
+            }
 			return TRUE;
 		}
 		if (type == AND || type == OR) {

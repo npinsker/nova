@@ -22,6 +22,10 @@ class FlxRoomsCamera extends FlxCamera {
 		
 		_roomData = RoomData.copy();
 	}
+
+    public function setRooms(roomData:Array<FlxRect>) {
+		_roomData = roomData.copy();
+    }
 	
 	override public function updateFollow():Void
 	{
